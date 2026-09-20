@@ -45,7 +45,7 @@ func NewProxyAwareHTTPClient(ctx context.Context, cfg *config.Config, auth *clip
 
 	// If we have a proxy URL configured, set up the transport
 	if proxyURL != "" {
-		transport := buildProxyTransport(proxyURL)
+		transport := cachedProxyTransport(proxyURL)
 		if transport != nil {
 			httpClient.Transport = transport
 			return httpClient
@@ -60,6 +60,40 @@ func NewProxyAwareHTTPClient(ctx context.Context, cfg *config.Config, auth *clip
 	}
 
 	return httpClient
+}
+
+// proxyTransportCacheCapacity bounds how many proxied connection pools stay alive.
+// An unused entry costs well under a kilobyte and no goroutines, while evicting a pool
+// that is still in use forces the next request through that proxy to redo the TCP + TLS
+// handshake, so the bound only exists to stop entries from accumulating when proxy
+// settings churn (rotating a credential's proxy, for example).
+const proxyTransportCacheCapacity = 1024
+
+// proxyTransportCache memoizes one transport per proxy URL so that every request routed
+// through the same proxy shares a single connection pool. Building a transport per
+// request gave each request a private pool: it paid a fresh TCP (and, through CONNECT,
+// TLS) handshake and left an idle connection and its goroutines behind until
+// IdleConnTimeout. The key is the trimmed proxy URL, which is the entire input to the
+// builder, so a configuration reload that changes the proxy selects a different pool
+// instead of reusing a stale one.
+var proxyTransportCache = NewTransportCache[string](proxyTransportCacheCapacity)
+
+// cachedProxyTransport returns the shared transport for proxyURL, building it on first
+// use. It returns nil when the proxy setting cannot be turned into a transport, matching
+// buildProxyTransport so callers keep their existing fallback behaviour.
+func cachedProxyTransport(proxyURL string) *http.Transport {
+	proxyURL = strings.TrimSpace(proxyURL)
+	if proxyURL == "" {
+		return nil
+	}
+	transport, errGet := proxyTransportCache.Get(proxyURL, func() (*http.Transport, error) {
+		return buildProxyTransportErr(proxyURL)
+	})
+	if errGet != nil {
+		log.Errorf("%v", errGet)
+		return nil
+	}
+	return transport
 }
 
 var devinTransportCache = NewTransportCache[string](DefaultTransportCacheCapacity)
@@ -143,10 +177,23 @@ func (rt devinNoGzipRoundTripper) RoundTrip(req *http.Request) (*http.Response, 
 // Returns:
 //   - *http.Transport: A configured transport, or nil if the proxy URL is invalid
 func buildProxyTransport(proxyURL string) *http.Transport {
-	transport, _, errBuild := proxyutil.BuildHTTPTransport(proxyURL)
+	transport, errBuild := buildProxyTransportErr(proxyURL)
 	if errBuild != nil {
 		log.Errorf("%v", errBuild)
 		return nil
 	}
 	return transport
+}
+
+// buildProxyTransportErr is buildProxyTransport without logging, so its result can be
+// cached: a failed build must surface as an error instead of taking a cache slot.
+func buildProxyTransportErr(proxyURL string) (*http.Transport, error) {
+	transport, _, errBuild := proxyutil.BuildHTTPTransport(proxyURL)
+	if errBuild != nil {
+		return nil, errBuild
+	}
+	if transport == nil {
+		return nil, fmt.Errorf("proxy %s produced no transport", proxyutil.Redact(proxyURL))
+	}
+	return transport, nil
 }
