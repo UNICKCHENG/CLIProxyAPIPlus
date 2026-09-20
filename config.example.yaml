@@ -149,6 +149,23 @@ usage-statistics-enabled: false
 # Default: 60. Max: 3600.
 redis-usage-queue-retention-seconds: 60
 
+# Per-model price overrides used to estimate consumption cost, in USD per one
+# million tokens. They take precedence over the price table downloaded from the
+# public LiteLLM cost map, which covers most models, so this is normally only
+# needed for negotiated rates or unlisted models.
+# Provider prefixes are ignored when matching, so
+# "anthropic/claude-sonnet-4-5" matches "claude-sonnet-4-5".
+model-price-overrides: []
+# model-price-overrides:
+#   - model: "claude-sonnet-4-5"
+#     input: 3.0
+#     output: 15.0
+#     cache-read: 0.30
+#     cache-write: 3.75
+#   - model: "gemini-3-pro-preview"
+#     input: 1.25
+#     output: 10.0
+
 # Proxy URL. Supports socks5/http/https protocols. Example: socks5://user:pass@192.168.1.1:1080/
 # Per-entry proxy-url also supports "direct" or "none" to bypass both the global proxy-url and environment proxies explicitly.
 proxy-url: ""

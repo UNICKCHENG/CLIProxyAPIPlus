@@ -1,6 +1,8 @@
 services:
   cli-proxy-api:
-    image: ${CLI_PROXY_IMAGE:-eceasy/cli-proxy-api:latest}
+    # Fork image lives on GHCR. The repository is private, so pulls require
+    # a prior `docker login ghcr.io` with a read-packages token.
+    image: ${CLI_PROXY_IMAGE:-ghcr.io/unickcheng/cliproxyapiplus:latest}
     pull_policy: always
     build:
       context: .

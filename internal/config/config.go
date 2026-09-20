@@ -65,6 +65,11 @@ type Config struct {
 	// Default: 60. Max: 3600.
 	RedisUsageQueueRetentionSeconds int `yaml:"redis-usage-queue-retention-seconds" json:"redis-usage-queue-retention-seconds"`
 
+	// ModelPriceOverrides are per-model price overrides used for cost
+	// estimation, in USD per one million tokens. They take precedence over the
+	// price table synced from the public LiteLLM cost map.
+	ModelPriceOverrides []ModelPriceOverride `yaml:"model-price-overrides" json:"model-price-overrides"`
+
 	// DisableCooling disables auth/model cooldown scheduling when true unless a credential or provider overrides it.
 	DisableCooling bool `yaml:"disable-cooling" json:"disable-cooling"`
 

@@ -200,6 +200,8 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 	auth.SetQuotaCooldownDisabled(cfg.DisableCooling)
 	auth.SetTransientErrorCooldownSeconds(cfg.TransientErrorCooldownSeconds)
 	applySignatureCacheConfig(nil, cfg)
+	// Wire the consumption statistics aggregator and model price table.
+	applyUsageStatsConfig(cfg)
 	// Initialize management handler
 	s.mgmt = managementHandlers.NewHandler(cfg, configFilePath, authManager)
 	s.mgmt.SetPluginHost(optionState.pluginHost)
@@ -395,6 +397,8 @@ func (s *Server) Stop(ctx context.Context) error {
 
 	// Shutdown the HTTP server.
 	errShutdown := s.server.Shutdown(ctx)
+	// Flush usage statistics state and stop price sync loops.
+	shutdownUsageStatsRuntime()
 	if s.codexLiveHandler != nil {
 		s.codexLiveHandler.Close()
 	}

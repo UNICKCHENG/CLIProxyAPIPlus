@@ -94,6 +94,10 @@ func (s *Server) UpdateClientsContext(ctx context.Context, cfg *config.Config) b
 		redisqueue.SetRetentionSeconds(cfg.RedisUsageQueueRetentionSeconds)
 	}
 
+	// Re-apply consumption statistics and model price settings. Configure is a
+	// cheap no-op when the effective settings are unchanged.
+	applyUsageStatsConfig(cfg)
+
 	if s.requestLogger != nil && (oldCfg == nil || oldCfg.ErrorLogsMaxFiles != cfg.ErrorLogsMaxFiles) {
 		if setter, ok := s.requestLogger.(interface{ SetErrorLogsMaxFiles(int) }); ok {
 			setter.SetErrorLogsMaxFiles(cfg.ErrorLogsMaxFiles)
