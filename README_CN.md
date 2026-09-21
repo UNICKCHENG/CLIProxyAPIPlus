@@ -53,6 +53,7 @@ CLIProxyAPI 是一个代理服务器，可在你已有的 CLI 工具与订阅之
 | Kimi（Moonshot） | OpenAI | OAuth 登录 |
 | Devin | OpenAI | OAuth 登录 |
 | Meta | OpenAI | OAuth 登录或 `meta-api-key` |
+| Cursor | OpenAI | API 密钥导入（`--cursor-login` 或管理中心） |
 | Vertex AI | Gemini | `vertex-api-key` / 导入服务账号 |
 | 任意 OpenAI 兼容上游 | OpenAI | `openai-compatibility` 配置 |
 
@@ -111,6 +112,7 @@ remote-management:
 ./cli-proxy-api --xai-login            # xAI Grok
 ./cli-proxy-api --devin-login          # Devin
 ./cli-proxy-api --meta-login           # Meta
+./cli-proxy-api --cursor-login         # Cursor（API 密钥导入；非交互式请加 --cursor-api-key）
 ```
 
 常用可选参数：`--no-browser`（不自动打开浏览器）、`--oauth-callback-port <port>`（覆盖回调端口）、`--config <path>`（指定配置文件路径）。

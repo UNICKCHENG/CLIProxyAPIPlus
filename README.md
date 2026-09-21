@@ -53,6 +53,7 @@ It is useful when you want to:
 | Kimi (Moonshot) | OpenAI | OAuth login |
 | Devin | OpenAI | OAuth login |
 | Meta | OpenAI | OAuth login or `meta-api-key` |
+| Cursor | OpenAI | API-key import (`--cursor-login` or Management Center) |
 | Vertex AI | Gemini | `vertex-api-key` / service-account import |
 | Any OpenAI-compatible upstream | OpenAI | `openai-compatibility` config |
 
@@ -111,6 +112,7 @@ Run the matching OAuth flow, then restart the server if needed:
 ./cli-proxy-api --xai-login            # xAI Grok
 ./cli-proxy-api --devin-login          # Devin
 ./cli-proxy-api --meta-login           # Meta
+./cli-proxy-api --cursor-login         # Cursor (API-key import; --cursor-api-key for non-interactive)
 ```
 
 Useful optional flags: `--no-browser` (do not open a browser automatically), `--oauth-callback-port <port>` (override the callback port), and `--config <path>` (config file location).

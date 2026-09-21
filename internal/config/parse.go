@@ -110,6 +110,9 @@ func ParseConfigBytes(data []byte) (*Config, error) {
 	cfg.SanitizeCodexKeys()
 	cfg.SanitizeXAIKeys()
 	cfg.SanitizeMetaKeys()
+	if errSanitizeCursor := cfg.SanitizeCursorConfig(); errSanitizeCursor != nil {
+		return nil, errSanitizeCursor
+	}
 	cfg.SanitizeCodexHeaderDefaults()
 	cfg.SanitizeClaudeHeaderDefaults()
 	cfg.SanitizeClaudeKeys()

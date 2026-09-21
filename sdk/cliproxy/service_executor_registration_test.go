@@ -130,6 +130,51 @@ func TestSyncPluginModelRuntimePreservesSDKExecutorUnlessForced(t *testing.T) {
 	}
 }
 
+// TestCursorExecutorReusedAcrossConfigReloadWithUnchangedSettings proves the fix for the
+// config-reload interruption: applyConfigRuntime arrives with forceReplaceAuths=true for every
+// provider, but the Cursor executor owns long-lived bridge processes and in-flight runs, so it
+// must be reused -- not replaced and closed -- whenever its settings did not change. A
+// settings change must still replace it.
+func TestCursorExecutorReusedAcrossConfigReloadWithUnchangedSettings(t *testing.T) {
+	service := &Service{
+		cfg:         &config.Config{},
+		coreManager: coreauth.NewManager(nil, nil, nil),
+	}
+
+	registerCursor := func() *runtimeexecutor.CursorExecutor {
+		t.Helper()
+		service.registerExecutorForAuth(&coreauth.Auth{ID: "cursor", Provider: "cursor"}, true)
+		resolved, ok := service.coreManager.Executor("cursor")
+		if !ok || resolved == nil {
+			t.Fatal("expected a cursor executor after registration")
+		}
+		cursorExec, isCursor := resolved.(*runtimeexecutor.CursorExecutor)
+		if !isCursor {
+			t.Fatalf("cursor executor type = %T, want *runtimeexecutor.CursorExecutor", resolved)
+		}
+		return cursorExec
+	}
+
+	first := registerCursor()
+
+	// Config reload with identical cursor settings: forceReplace=true must NOT close the
+	// existing executor's runtime (in-flight runs and bridges survive an unrelated edit).
+	service.cfg = &config.Config{}
+	second := registerCursor()
+	if second != first {
+		t.Fatal("config reload with unchanged cursor settings replaced the executor")
+	}
+
+	// A real cursor settings change must replace and close the old runtime.
+	changedCfg := &config.Config{}
+	changedCfg.Cursor.ProxyURL = "socks5://127.0.0.1:1080"
+	service.cfg = changedCfg
+	third := registerCursor()
+	if third == first {
+		t.Fatal("cursor settings change did not replace the executor")
+	}
+}
+
 func TestRegisterExecutorForAuth_OpenAICompatUsesNamespacedProviderKey(t *testing.T) {
 	testCases := []struct {
 		name  string

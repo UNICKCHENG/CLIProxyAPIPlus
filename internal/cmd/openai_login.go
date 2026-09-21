@@ -24,6 +24,9 @@ type LoginOptions struct {
 
 	// Prompt allows the caller to provide interactive input when needed.
 	Prompt func(prompt string) (string, error)
+
+	// APIKey carries a provider API key for key-import logins (e.g. --cursor-api-key).
+	APIKey string
 }
 
 // DoCodexLogin triggers the Codex OAuth flow through the shared authentication manager.

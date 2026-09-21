@@ -53,6 +53,7 @@ CLIProxyAPI は、既存の CLI ツールとサブスクリプションの上に
 | Kimi（Moonshot） | OpenAI | OAuth ログイン |
 | Devin | OpenAI | OAuth ログイン |
 | Meta | OpenAI | OAuth ログインまたは `meta-api-key` |
+| Cursor | OpenAI | API キーインポート（`--cursor-login` または管理センター） |
 | Vertex AI | Gemini | `vertex-api-key` / サービスアカウントのインポート |
 | OpenAI 互換アップストリーム | OpenAI | `openai-compatibility` 設定 |
 
@@ -111,6 +112,7 @@ remote-management:
 ./cli-proxy-api --xai-login            # xAI Grok
 ./cli-proxy-api --devin-login          # Devin
 ./cli-proxy-api --meta-login           # Meta
+./cli-proxy-api --cursor-login         # Cursor（API キーインポート；非対話は --cursor-api-key）
 ```
 
 主なオプション：`--no-browser`（ブラウザを自動で開かない）、`--oauth-callback-port <port>`（コールバックポートの上書き）、`--config <path>`（設定ファイルのパス指定）。

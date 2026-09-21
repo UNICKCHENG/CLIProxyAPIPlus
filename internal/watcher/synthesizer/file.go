@@ -149,6 +149,13 @@ func synthesizeFileAuths(ctx *SynthesisContext, fullPath string, data []byte) ([
 	if provider == "" || provider == "gemini-cli" {
 		return nil, nil
 	}
+	if provider == "cursor" {
+		auth, errCursor := synthesizeCursorAuth(ctx, fullPath, data, metadata)
+		if errCursor != nil {
+			return nil, errCursor
+		}
+		return []*coreauth.Auth{auth}, nil
+	}
 	label := provider
 	if email, _ := metadata["email"].(string); email != "" {
 		label = email

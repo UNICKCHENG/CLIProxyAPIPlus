@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -148,6 +149,54 @@ func (cfg *Config) SanitizeOAuthRequestScopedErrors() {
 		return
 	}
 	cfg.OAuthRequestScopedErrors = out
+}
+
+// cursorMaxCredentialWeight mirrors the ceiling the scheduler enforces on credential weights.
+const cursorMaxCredentialWeight = 1_000_000
+
+// SanitizeCursorConfig normalizes the native Cursor provider configuration.
+// It trims bridge/proxy strings, lowercases and validates optimize-for, and
+// normalizes credential weight keys case-insensitively. Weights are decoded
+// strictly: fractional or non-integer values are rejected, non-positive values
+// clamp to zero (excluded from weighted routing), and values above the
+// scheduler ceiling are rejected. Duplicate keys after case folding are rejected.
+func (cfg *Config) SanitizeCursorConfig() error {
+	if cfg == nil {
+		return nil
+	}
+	cfg.Cursor.BridgePath = strings.TrimSpace(cfg.Cursor.BridgePath)
+	cfg.Cursor.ProxyURL = strings.TrimSpace(cfg.Cursor.ProxyURL)
+	cfg.Cursor.OptimizeFor = strings.ToLower(strings.TrimSpace(cfg.Cursor.OptimizeFor))
+	if cfg.Cursor.OptimizeFor == "" {
+		cfg.Cursor.OptimizeFor = "balanced"
+	}
+	switch cfg.Cursor.OptimizeFor {
+	case "cost", "balanced", "intelligence":
+	default:
+		return fmt.Errorf("cursor.optimize-for must be one of cost, balanced, intelligence, got %q", cfg.Cursor.OptimizeFor)
+	}
+	if len(cfg.Cursor.Weights) == 0 {
+		return nil
+	}
+	normalized := make(map[string]int, len(cfg.Cursor.Weights))
+	for rawKey, weight := range cfg.Cursor.Weights {
+		key := strings.ToLower(strings.TrimSpace(rawKey))
+		if key == "" {
+			continue
+		}
+		if _, duplicate := normalized[key]; duplicate {
+			return fmt.Errorf("cursor.weights contains duplicate entries for %q", key)
+		}
+		if weight > cursorMaxCredentialWeight {
+			return fmt.Errorf("cursor.weights[%s] must not exceed %d", key, cursorMaxCredentialWeight)
+		}
+		if weight < 0 {
+			weight = 0
+		}
+		normalized[key] = weight
+	}
+	cfg.Cursor.Weights = normalized
+	return nil
 }
 
 // SanitizeOpenAICompatibility removes OpenAI-compatibility provider entries that are

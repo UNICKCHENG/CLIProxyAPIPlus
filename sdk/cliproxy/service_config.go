@@ -178,7 +178,10 @@ func (s *Service) applyConfigRuntime(ctx context.Context, commit configCommit, s
 		auths = s.coreManager.List()
 	}
 	s.registerAvailableExecutors(registrationCtx, executorRegistrationOptions{
-		includeBaseline:   cfg.Home.Enabled,
+		// Cursor is always included: its executor owns bridge processes and routing
+		// weights that must be reconfigured (or closed) when cursor settings change,
+		// independent of Home mode.
+		includeBaseline:   cfg.Home.Enabled || hasCursorAuth(auths),
 		forceReplaceAuths: true,
 		auths:             auths,
 	})

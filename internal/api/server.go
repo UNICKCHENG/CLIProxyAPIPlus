@@ -206,6 +206,9 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 	s.mgmt = managementHandlers.NewHandler(cfg, configFilePath, authManager)
 	s.mgmt.SetPluginHost(optionState.pluginHost)
 	s.mgmt.SetConfigReloadHook(optionState.configReloadHook)
+	// Wire the native Cursor runtime through the registered executor so the management
+	// import endpoint reuses it rather than constructing an unrelated long-lived bridge.
+	s.mgmt.SetCursorServiceRuntime(&managementHandlers.CursorRuntimeAdapter{AuthManager: authManager})
 	if optionState.localPassword != "" {
 		s.mgmt.SetLocalPassword(optionState.localPassword)
 	}

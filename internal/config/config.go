@@ -119,6 +119,10 @@ type Config struct {
 	// Devin configures provider-wide Devin request behavior.
 	Devin DevinConfig `yaml:"devin" json:"devin"`
 
+	// Cursor configures provider-wide Cursor request behavior: bridge path, proxy, router
+	// mode, and credential routing weights.
+	Cursor CursorConfig `yaml:"cursor" json:"cursor"`
+
 	// GeminiKey defines Gemini API key configurations with optional routing overrides.
 	GeminiKey []GeminiKey `yaml:"gemini-api-key" json:"gemini-api-key"`
 

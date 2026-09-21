@@ -42,6 +42,7 @@ require (
 )
 
 require (
+	connectrpc.com/connect v1.18.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dlclark/regexp2/v2 v2.5.1 // indirect
 	github.com/miekg/dns v1.1.43 // indirect
@@ -119,6 +120,6 @@ require (
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/arch v0.8.0 // indirect
-	google.golang.org/protobuf v1.34.1
+	google.golang.org/protobuf v1.36.12
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )

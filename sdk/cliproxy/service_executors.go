@@ -211,6 +211,7 @@ func baselineExecutorAuths() []*coreauth.Auth {
 		"xai",
 		"devin",
 		"meta",
+		"cursor",
 		"openai-compatibility",
 	}
 	auths := make([]*coreauth.Auth, 0, len(providers))
@@ -309,6 +310,11 @@ func (s *Service) registerExecutorForAuth(a *coreauth.Auth, forceReplace bool) {
 		s.coreManager.RegisterExecutor(executor.NewDevinExecutor(cfg))
 	case "meta":
 		s.coreManager.RegisterExecutor(executor.NewMetaExecutor(cfg))
+	case "cursor":
+		// Native Cursor registration runs ahead of plugin fallback so a leftover
+		// installed auth-cursor plugin can neither claim native Cursor models nor
+		// replace the native executor.
+		s.coreManager.RegisterExecutor(s.cursorExecutor(cfg, forceReplace))
 	default:
 		providerKey := strings.ToLower(strings.TrimSpace(a.Provider))
 		if providerKey == "" {
@@ -565,4 +571,60 @@ func (s *Service) tryRegisterPluginModelsForAuth(ctx context.Context, a *coreaut
 	}
 	GlobalModelRegistry().UnregisterClient(activeAuth.ID)
 	return true
+}
+
+// cursorExecutor returns the reusable native Cursor executor.
+//
+// Reuse is keyed on settings, not on the force-replace flag: config reloads arrive with
+// forceReplaceAuths=true for every provider, but the Cursor executor owns long-lived state
+// (bridge processes, session agents, in-flight runs). Replacing it on an unrelated config
+// edit would cancel in-flight requests and tear down healthy bridges. So the registered
+// executor is reused whenever its runtime already reflects cfg -- even under force-replace —
+// and replaced (closing bridges, sessions and in-flight runs) only when the Cursor settings
+// actually changed.
+func (s *Service) cursorExecutor(cfg *config.Config, _ bool) coreauth.ProviderExecutor {
+	if s.coreManager != nil {
+		if existing, ok := s.coreManager.Executor("cursor"); ok {
+			if cursorExec, isCursor := existing.(*executor.CursorExecutor); isCursor && cursorExec.UsesConfig(cfg) {
+				return cursorExec
+			}
+		}
+	}
+	next := executor.NewCursorExecutor(cfg)
+	if s.coreManager != nil {
+		if existing, ok := s.coreManager.Executor("cursor"); ok {
+			if oldCursor, isCursor := existing.(*executor.CursorExecutor); isCursor && oldCursor != next {
+				// The replaced executor owns bridge processes and scratch workspaces.
+				oldCursor.CloseExecutionSession(coreauth.CloseAllExecutionSessionsID)
+				oldCursor.Close()
+			}
+		}
+	}
+	return next
+}
+
+// hasCursorAuth reports whether any auth entry uses the native cursor provider.
+func hasCursorAuth(auths []*coreauth.Auth) bool {
+	for _, auth := range auths {
+		if auth != nil && strings.EqualFold(strings.TrimSpace(auth.Provider), "cursor") {
+			return true
+		}
+	}
+	return false
+}
+
+// CursorExecutorForAuth returns the registered native Cursor executor, if any. The management
+// import flow reuses this runtime rather than constructing an unrelated long-lived bridge.
+func (s *Service) CursorExecutorForAuth() *executor.CursorExecutor {
+	if s == nil || s.coreManager == nil {
+		return nil
+	}
+	existing, ok := s.coreManager.Executor("cursor")
+	if !ok || existing == nil {
+		return nil
+	}
+	if cursorExec, isCursor := existing.(*executor.CursorExecutor); isCursor {
+		return cursorExec
+	}
+	return nil
 }

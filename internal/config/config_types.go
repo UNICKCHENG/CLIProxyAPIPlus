@@ -154,6 +154,26 @@ type DevinConfig struct {
 	SensitiveWords []string `yaml:"sensitive-words,omitempty" json:"sensitive-words,omitempty"`
 }
 
+// CursorConfig configures provider-wide Cursor request behavior.
+type CursorConfig struct {
+	// BridgePath points at a self-installed cursor-sdk-bridge binary (or the directory or
+	// bin/ subtree the release archive unpacks into). Empty installs the pinned release into
+	// the user's cache directory on first use.
+	BridgePath string `yaml:"bridge-path" json:"bridge-path"`
+	// ProxyURL is the fallback proxy for credentials whose auth file sets no proxy_url.
+	// Cursor traffic reaches the SDK bridge process directly, so the host's global
+	// proxy-url does not reach it and has to be restated here.
+	ProxyURL string `yaml:"proxy-url" json:"proxy-url"`
+	// OptimizeFor selects the Cursor Router mode for the auto-smart router model.
+	// Supported values: "cost", "balanced" (default), "intelligence".
+	OptimizeFor string `yaml:"optimize-for" json:"optimize-for"`
+	// Weights maps a credential, named by account email or auth file name (case-insensitive),
+	// to its weighted-round-robin share. Weights live here instead of in the auth file
+	// because the login flow rewrites that file and would drop them on every renewal.
+	// A file-level weight takes precedence over a configured one.
+	Weights map[string]int `yaml:"weights,omitempty" json:"weights,omitempty"`
+}
+
 // AntigravityConfig configures provider-wide Antigravity request behavior.
 type AntigravityConfig struct {
 	// SensitiveWords is a list of words to obfuscate with zero-width characters in system instructions.

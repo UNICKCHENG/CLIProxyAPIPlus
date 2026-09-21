@@ -1,0 +1,10 @@
+# Build configuration for the in-tree sdk.v1 contract.
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

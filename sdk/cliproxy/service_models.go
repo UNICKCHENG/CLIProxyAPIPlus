@@ -11,6 +11,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v7/internal/registry"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v7/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v7/sdk/config"
+	log "github.com/sirupsen/logrus"
 )
 
 // registerModelsForAuth (re)binds provider models in the global registry using the core auth ID as client identifier.
@@ -176,6 +177,33 @@ func (s *Service) registerModelsForAuthWithCache(ctx context.Context, a *coreaut
 			if authKind == "apikey" {
 				excluded = entry.ExcludedModels
 			}
+		}
+		models = applyExcludedModels(models, excluded)
+	case "cursor":
+		// Per-account discovery against the native runtime. A failed or empty discovery
+		// unregisters this auth's models but does not make generation impossible:
+		// execution still forwards the requested model to Cursor.
+		cursorExec := s.CursorExecutorForAuth()
+		if cursorExec == nil || cursorExec.Runtime() == nil {
+			GlobalModelRegistry().UnregisterClient(a.ID)
+			return
+		}
+		discovered, errDiscover := cursorExec.Runtime().DiscoverModels(ctx, a)
+		if errDiscover != nil || len(discovered) == 0 {
+			reason := "empty catalog"
+			if errDiscover != nil {
+				reason = errDiscover.Error()
+			}
+			log.WithFields(log.Fields{"auth_id": a.ID, "reason": reason}).Warn("cursor model discovery failed")
+			GlobalModelRegistry().UnregisterClient(a.ID)
+			return
+		}
+		models = make([]*ModelInfo, 0, len(discovered))
+		for _, model := range discovered {
+			if model == nil || strings.TrimSpace(model.ID) == "" {
+				continue
+			}
+			models = append(models, model)
 		}
 		models = applyExcludedModels(models, excluded)
 	default:

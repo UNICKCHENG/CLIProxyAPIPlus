@@ -175,6 +175,11 @@ func LoadConfigOptional(configFile string, optional bool) (*Config, error) {
 	// Sanitize Meta keys.
 	cfg.SanitizeMetaKeys()
 
+	// Sanitize Cursor provider configuration.
+	if errSanitizeCursor := cfg.SanitizeCursorConfig(); errSanitizeCursor != nil {
+		return nil, errSanitizeCursor
+	}
+
 	// Sanitize Codex header defaults.
 	cfg.SanitizeCodexHeaderDefaults()
 

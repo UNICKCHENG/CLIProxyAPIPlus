@@ -61,6 +61,13 @@ type Handler struct {
 	pluginStoreHTTPClient   pluginstore.HTTPDoer
 	pluginStoreRateLimiter  *pluginstore.GitHubRateLimiter
 	pluginReleases          pluginReleaseCache
+	serviceRuntime          cursorRuntimeProvider
+}
+
+// cursorRuntimeProvider is the narrow surface the management import flow needs from the
+// native Cursor executor's runtime.
+type cursorRuntimeProvider interface {
+	ValidateAPIKey(ctx context.Context, apiKey string) (email string, err error)
 }
 
 type configReloadSnapshot struct {

@@ -1,0 +1,17 @@
+# Code generation for the in-tree sdk.v1 contract. Regenerate with:
+#   cd internal/auth/cursor && buf generate
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor
+inputs:
+  - directory: proto
+plugins:
+  - local: protoc-gen-go
+    out: .
+    opt: paths=source_relative
+  - local: protoc-gen-connect-go
+    out: .
+    opt: paths=source_relative
