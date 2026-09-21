@@ -162,7 +162,7 @@ type CursorConfig struct {
 	BridgePath string `yaml:"bridge-path" json:"bridge-path"`
 	// ProxyURL is the fallback proxy for credentials whose auth file sets no proxy_url.
 	// Cursor traffic reaches the SDK bridge process directly, so the host's global
-	// proxy-url does not reach it and has to be restated here.
+	// proxy-url is used as the fallback when this field is empty.
 	ProxyURL string `yaml:"proxy-url" json:"proxy-url"`
 	// OptimizeFor selects the Cursor Router mode for the auto-smart router model.
 	// Supported values: "cost", "balanced" (default), "intelligence".

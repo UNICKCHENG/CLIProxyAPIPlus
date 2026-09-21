@@ -52,9 +52,13 @@ func (a *CursorAuthenticator) runtimeFor(cfg *config.Config) *cursorruntime.Runt
 	}
 	settings := cursorruntime.Settings{OptimizeFor: "balanced"}
 	if cfg != nil {
+		proxyURL := strings.TrimSpace(cfg.Cursor.ProxyURL)
+		if proxyURL == "" {
+			proxyURL = strings.TrimSpace(cfg.ProxyURL)
+		}
 		settings = cursorruntime.Settings{
 			BridgePath:  strings.TrimSpace(cfg.Cursor.BridgePath),
-			ProxyURL:    strings.TrimSpace(cfg.Cursor.ProxyURL),
+			ProxyURL:    proxyURL,
 			OptimizeFor: "balanced",
 		}
 		if settings.OptimizeFor == "" {

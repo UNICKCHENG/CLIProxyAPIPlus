@@ -418,7 +418,7 @@ codex:
 # directly as auth files: {"type":"cursor","api_key":"<key>"}.
 # cursor:
 #   bridge-path: ""            # optional: path to a self-installed cursor-sdk-bridge binary (or its unpacked directory); empty installs the pinned release on first use
-#   proxy-url: ""              # optional: fallback proxy for credentials without a per-account proxy_url; the host's global proxy-url does not reach Cursor traffic
+#   proxy-url: ""              # optional: fallback proxy for credentials without a per-account proxy_url; when empty, falls back to the host's global proxy-url
 #   optimize-for: "balanced"   # Cursor Router mode for the auto-smart router model: cost | balanced | intelligence
 #   weights:                   # optional weighted-round-robin shares keyed by account email or auth file name (case-insensitive); a file-level weight takes precedence
 #     "user@example.com": 3

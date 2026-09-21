@@ -9,6 +9,7 @@ import (
 	cursorruntime "github.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor"
 	"github.com/router-for-me/CLIProxyAPI/v7/internal/config"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v7/sdk/cliproxy/auth"
+	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v7/sdk/cliproxy/executor"
 )
 
 // TestCursorErrorMapping proves runtime failures land in the manager's error contracts:
@@ -106,6 +107,38 @@ func TestCursorRefreshWithKeyReturnsAuthUnchanged(t *testing.T) {
 	}
 	if got != auth {
 		t.Fatal("Refresh() returned a different record")
+	}
+}
+
+// TestCursorProxyURLFallback proves the entry-level proxy-url falls back to the host's
+// global proxy-url (both in runtime Settings and per-request ChatRunRequest) and that a
+// non-empty cursor.proxy-url keeps precedence over the global value. The credential-level
+// proxy_url override is applied afterwards in buildRunRequest.
+func TestCursorProxyURLFallback(t *testing.T) {
+	cfg := minimalCursorConfig("balanced", nil)
+	cfg.ProxyURL = "http://global:8080"
+
+	settings := cursorSettingsFrom(cfg)
+	if settings.ProxyURL != "http://global:8080" {
+		t.Fatalf("cursorSettingsFrom().ProxyURL = %q, want global fallback", settings.ProxyURL)
+	}
+	exec := NewCursorExecutor(cfg)
+	if got := exec.buildRunRequest(newCursorTestAuth("key_abc"), cliproxyexecutor.Request{}, "model", cliproxyexecutor.Options{}).ProxyURL; got != "http://global:8080" {
+		t.Fatalf("buildRunRequest().ProxyURL = %q, want global fallback", got)
+	}
+}
+
+func TestCursorProxyURLOverridesGlobal(t *testing.T) {
+	cfg := minimalCursorConfig("balanced", nil)
+	cfg.ProxyURL = "http://global:8080"
+	cfg.Cursor.ProxyURL = "http://cursor:1"
+
+	if settings := cursorSettingsFrom(cfg); settings.ProxyURL != "http://cursor:1" {
+		t.Fatalf("cursorSettingsFrom().ProxyURL = %q, want entry-level value", settings.ProxyURL)
+	}
+	exec := NewCursorExecutor(cfg)
+	if got := exec.buildRunRequest(newCursorTestAuth("key_abc"), cliproxyexecutor.Request{}, "model", cliproxyexecutor.Options{}).ProxyURL; got != "http://cursor:1" {
+		t.Fatalf("buildRunRequest().ProxyURL = %q, want entry-level value", got)
 	}
 }
 

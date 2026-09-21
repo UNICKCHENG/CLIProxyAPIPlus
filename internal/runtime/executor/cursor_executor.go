@@ -84,10 +84,22 @@ func cursorSettingsFrom(cfg *config.Config) cursorruntime.Settings {
 	}
 	return cursorruntime.Settings{
 		BridgePath:  strings.TrimSpace(cfg.Cursor.BridgePath),
-		ProxyURL:    strings.TrimSpace(cfg.Cursor.ProxyURL),
+		ProxyURL:    cursorProxyURLFromConfig(cfg),
 		OptimizeFor: optimizeFor,
 		Weights:     weights,
 	}
+}
+
+// cursorProxyURLFromConfig resolves the Cursor egress proxy with the project-wide
+// three-level fallback: credential proxy_url > cursor.proxy-url > global proxy-url. The
+// credential level is applied per request in buildRunRequest; here the entry-level value
+// falls back to the host's global proxy-url, which the bridge runtime, key validation and
+// model discovery all inherit through Settings.
+func cursorProxyURLFromConfig(cfg *config.Config) string {
+	if proxyURL := strings.TrimSpace(cfg.Cursor.ProxyURL); proxyURL != "" {
+		return proxyURL
+	}
+	return strings.TrimSpace(cfg.ProxyURL)
 }
 
 // Identifier returns the provider identifier "cursor".
@@ -278,7 +290,7 @@ func (e *CursorExecutor) buildRunRequest(auth *cliproxyauth.Auth, req cliproxyex
 	optimizeFor := ""
 	if e.cfg != nil {
 		optimizeFor = strings.ToLower(strings.TrimSpace(e.cfg.Cursor.OptimizeFor))
-		proxyURL = strings.TrimSpace(e.cfg.Cursor.ProxyURL)
+		proxyURL = cursorProxyURLFromConfig(e.cfg)
 	}
 	if optimizeFor == "" {
 		optimizeFor = "balanced"
