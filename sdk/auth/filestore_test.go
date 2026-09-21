@@ -401,3 +401,31 @@ func (f fileStoreMultiAuthParserFunc) ParseAuth(context.Context, pluginapi.AuthP
 func (f fileStoreMultiAuthParserFunc) ParseAuths(ctx context.Context, req pluginapi.AuthParseRequest) ([]*cliproxyauth.Auth, bool, error) {
 	return f(ctx, req)
 }
+
+func TestFileTokenStoreListSkipsStateSubdir(t *testing.T) {
+	baseDir := t.TempDir()
+	if errWrite := os.WriteFile(filepath.Join(baseDir, "codex.json"), []byte(`{"type":"codex","access_token":"token"}`), 0o600); errWrite != nil {
+		t.Fatalf("write auth file: %v", errWrite)
+	}
+	// Runtime state artifacts live in the "state" subdirectory of the auth dir;
+	// they are valid JSON but must never surface as credentials.
+	stateDir := filepath.Join(baseDir, "state")
+	if errMkdir := os.MkdirAll(stateDir, 0o755); errMkdir != nil {
+		t.Fatalf("create state dir: %v", errMkdir)
+	}
+	for _, name := range []string{"usage-stats.json", "model-prices.json"} {
+		if errWrite := os.WriteFile(filepath.Join(stateDir, name), []byte(`{"type":"codex","access_token":"internal"}`), 0o600); errWrite != nil {
+			t.Fatalf("write state file %s: %v", name, errWrite)
+		}
+	}
+
+	store := NewFileTokenStore()
+	store.SetBaseDir(baseDir)
+	auths, errList := store.List(context.Background())
+	if errList != nil {
+		t.Fatalf("List() error = %v", errList)
+	}
+	if len(auths) != 1 || auths[0].ID != "codex.json" {
+		t.Fatalf("List() = %v, want only codex.json", auths)
+	}
+}

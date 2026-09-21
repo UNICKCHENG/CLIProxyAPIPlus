@@ -1,10 +1,13 @@
 package api
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/router-for-me/CLIProxyAPI/v7/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v7/internal/modelprice"
+	"github.com/router-for-me/CLIProxyAPI/v7/internal/usagestats"
 )
 
 // The consumption statistics subsystem exposes exactly one config key, the
@@ -13,10 +16,11 @@ import (
 
 func TestResolveUsageStatsStateDir(t *testing.T) {
 	authDir := filepath.Join("/srv", "cli-proxy-api")
+	stateDir := filepath.Join(authDir, "state")
 
-	t.Run("uses the configured auth directory", func(t *testing.T) {
-		if got := resolveUsageStatsStateDir(authDir); got != authDir {
-			t.Fatalf("got %q, want %q", got, authDir)
+	t.Run("nests under the configured auth directory", func(t *testing.T) {
+		if got := resolveUsageStatsStateDir(authDir); got != stateDir {
+			t.Fatalf("got %q, want %q", got, stateDir)
 		}
 	})
 
@@ -37,9 +41,48 @@ func TestResolveUsageStatsStateDir(t *testing.T) {
 
 	t.Run("normalizes redundant separators", func(t *testing.T) {
 		got := resolveUsageStatsStateDir("/srv/cli-proxy-api/../cli-proxy-api")
-		if got != authDir {
-			t.Fatalf("got %q, want %q", got, authDir)
+		if got != stateDir {
+			t.Fatalf("got %q, want %q", got, stateDir)
 		}
+	})
+}
+
+func TestMigrateUsageStatsState(t *testing.T) {
+	t.Run("moves legacy state files into the state directory", func(t *testing.T) {
+		authDir := t.TempDir()
+		for _, name := range []string{usagestats.DefaultPersistFileName, modelprice.DefaultCacheFileName} {
+			if err := os.WriteFile(filepath.Join(authDir, name), []byte("{}"), 0o600); err != nil {
+				t.Fatalf("write %s: %v", name, err)
+			}
+		}
+
+		migrateUsageStatsState(resolveUsageStatsStateDir(authDir))
+
+		stateDir := filepath.Join(authDir, "state")
+		for _, name := range []string{usagestats.DefaultPersistFileName, modelprice.DefaultCacheFileName} {
+			if _, err := os.Stat(filepath.Join(stateDir, name)); err != nil {
+				t.Fatalf("expected %s inside state dir: %v", name, err)
+			}
+			if _, err := os.Stat(filepath.Join(authDir, name)); !os.IsNotExist(err) {
+				t.Fatalf("expected %s removed from auth dir, stat error = %v", name, err)
+			}
+		}
+	})
+
+	t.Run("is a no-op without legacy files", func(t *testing.T) {
+		authDir := t.TempDir()
+		migrateUsageStatsState(resolveUsageStatsStateDir(authDir))
+		entries, err := os.ReadDir(filepath.Join(authDir, "state"))
+		if err != nil {
+			t.Fatalf("read state dir: %v", err)
+		}
+		if len(entries) != 0 {
+			t.Fatalf("expected empty state dir, got %d entries", len(entries))
+		}
+	})
+
+	t.Run("is a no-op with an empty state dir", func(t *testing.T) {
+		migrateUsageStatsState("")
 	})
 }
 

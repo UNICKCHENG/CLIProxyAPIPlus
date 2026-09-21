@@ -17,6 +17,19 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v7/sdk/pluginapi"
 )
 
+// excludedAuthSubdirs names subdirectories that never hold credentials. The
+// auth directory's "state" child persists internal runtime artifacts (e.g.
+// usage-stats.json, model-prices.json) and must not be enumerated as auth
+// files by directory walkers.
+var excludedAuthSubdirs = map[string]struct{}{
+	"state": {},
+}
+
+func isExcludedAuthSubdir(name string) bool {
+	_, ok := excludedAuthSubdirs[strings.ToLower(strings.TrimSpace(name))]
+	return ok
+}
+
 // PluginAuthParser parses auth JSON owned by plugin providers.
 type PluginAuthParser interface {
 	ParseAuth(context.Context, pluginapi.AuthParseRequest) (*cliproxyauth.Auth, bool, error)
@@ -180,9 +193,9 @@ func (s *FileTokenStore) List(ctx context.Context) ([]*cliproxyauth.Auth, error)
 			return walkErr
 		}
 		if d.IsDir() {
-			return nil
-		}
-		if !strings.HasSuffix(strings.ToLower(d.Name()), ".json") {
+			if isExcludedAuthSubdir(d.Name()) {
+				return fs.SkipDir
+			}
 			return nil
 		}
 		auths, errReadAuths := s.readAuthFiles(path, dir)

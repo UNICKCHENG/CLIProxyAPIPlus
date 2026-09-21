@@ -1,7 +1,11 @@
 package api
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/router-for-me/CLIProxyAPI/v7/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v7/internal/modelprice"
@@ -25,6 +29,7 @@ func applyUsageStatsConfig(cfg *config.Config) {
 	cfg.NormalizeModelPriceOverrides()
 
 	stateDir := resolveUsageStatsStateDir(cfg.AuthDir)
+	migrateUsageStatsState(stateDir)
 
 	usagestats.Configure(usagestats.Options{StateDir: stateDir})
 
@@ -62,12 +67,42 @@ func shutdownUsageStatsRuntime() {
 }
 
 // resolveUsageStatsStateDir resolves the directory holding the persisted usage
-// artifacts. An unresolvable auth directory yields "", which disables
-// persistence rather than writing somewhere unexpected.
+// artifacts: a "state" subdirectory of the auth directory, kept outside the
+// auth directory root so directory scanners that enumerate *.json never see
+// the internal state files. An unresolvable auth directory yields "", which
+// disables persistence rather than writing somewhere unexpected.
 func resolveUsageStatsStateDir(authDir string) string {
 	resolved, err := util.ResolveAuthDir(authDir)
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(resolved)
+	resolved = strings.TrimSpace(resolved)
+	if resolved == "" {
+		return ""
+	}
+	return filepath.Join(resolved, "state")
+}
+
+// migrateUsageStatsState moves the legacy state files from the auth directory
+// root into the state subdirectory so pre-existing installations keep their
+// usage history and cached prices. Missing or already-migrated files are
+// skipped; an unwritable directory only logs, since both packages treat an
+// unreadable state file as a fresh start.
+func migrateUsageStatsState(stateDir string) {
+	if stateDir == "" {
+		return
+	}
+	authDir := filepath.Dir(stateDir)
+	if errMkdir := os.MkdirAll(stateDir, 0o755); errMkdir != nil {
+		return
+	}
+	for _, name := range []string{usagestats.DefaultPersistFileName, modelprice.DefaultCacheFileName} {
+		legacy := filepath.Join(authDir, name)
+		if _, errStat := os.Stat(legacy); errStat != nil {
+			continue
+		}
+		if errRename := os.Rename(legacy, filepath.Join(stateDir, name)); errRename != nil {
+			log.WithError(errRename).Warnf("usage stats: failed to migrate legacy state file %s", legacy)
+		}
+	}
 }
