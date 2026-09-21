@@ -50,7 +50,7 @@ It is useful when you want to:
 | Anthropic Claude | Anthropic Messages (`/v1/messages`) | OAuth login or `claude-api-key` |
 | Google Gemini / Antigravity | Gemini `generateContent`, Gemini Interactions | OAuth login or `gemini-api-key` |
 | xAI Grok | OpenAI, Responses | OAuth login or `xai-api-key` |
-| Kimi (Moonshot) | OpenAI | OAuth login |
+| Kimi (Moonshot) | OpenAI | OAuth login (`--kimi-login`) or Kimi.ai OAuth login (`--kimi-ai-login`) |
 | Devin | OpenAI | OAuth login |
 | Meta | OpenAI | OAuth login or `meta-api-key` |
 | Cursor | OpenAI | API-key import (`--cursor-login` or Management Center) |
@@ -108,7 +108,8 @@ Run the matching OAuth flow, then restart the server if needed:
 ./cli-proxy-api --codex-login          # OpenAI Codex
 ./cli-proxy-api --claude-login         # Anthropic Claude
 ./cli-proxy-api --antigravity-login    # Google Antigravity / Gemini
-./cli-proxy-api --kimi-login           # Kimi
+./cli-proxy-api --kimi-login           # Kimi (Moonshot, platform.kimi.com)
+./cli-proxy-api --kimi-ai-login        # Kimi.ai
 ./cli-proxy-api --xai-login            # xAI Grok
 ./cli-proxy-api --devin-login          # Devin
 ./cli-proxy-api --meta-login           # Meta

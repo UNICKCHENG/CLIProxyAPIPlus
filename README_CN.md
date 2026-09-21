@@ -50,7 +50,7 @@ CLIProxyAPI 是一个代理服务器，可在你已有的 CLI 工具与订阅之
 | Anthropic Claude | Anthropic Messages（`/v1/messages`） | OAuth 登录或 `claude-api-key` |
 | Google Gemini / Antigravity | Gemini `generateContent`、Gemini Interactions | OAuth 登录或 `gemini-api-key` |
 | xAI Grok | OpenAI、Responses | OAuth 登录或 `xai-api-key` |
-| Kimi（Moonshot） | OpenAI | OAuth 登录 |
+| Kimi（Moonshot） | OpenAI | OAuth 登录（`--kimi-login`）或 Kimi.ai OAuth 登录（`--kimi-ai-login`） |
 | Devin | OpenAI | OAuth 登录 |
 | Meta | OpenAI | OAuth 登录或 `meta-api-key` |
 | Cursor | OpenAI | API 密钥导入（`--cursor-login` 或管理中心） |
@@ -108,7 +108,8 @@ remote-management:
 ./cli-proxy-api --codex-login          # OpenAI Codex
 ./cli-proxy-api --claude-login         # Anthropic Claude
 ./cli-proxy-api --antigravity-login    # Google Antigravity / Gemini
-./cli-proxy-api --kimi-login           # Kimi
+./cli-proxy-api --kimi-login           # Kimi (Moonshot, platform.kimi.com)
+./cli-proxy-api --kimi-ai-login        # Kimi.ai
 ./cli-proxy-api --xai-login            # xAI Grok
 ./cli-proxy-api --devin-login          # Devin
 ./cli-proxy-api --meta-login           # Meta

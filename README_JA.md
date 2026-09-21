@@ -50,7 +50,7 @@ CLIProxyAPI は、既存の CLI ツールとサブスクリプションの上に
 | Anthropic Claude | Anthropic Messages（`/v1/messages`） | OAuth ログインまたは `claude-api-key` |
 | Google Gemini / Antigravity | Gemini `generateContent`、Gemini Interactions | OAuth ログインまたは `gemini-api-key` |
 | xAI Grok | OpenAI、Responses | OAuth ログインまたは `xai-api-key` |
-| Kimi（Moonshot） | OpenAI | OAuth ログイン |
+| Kimi（Moonshot） | OpenAI | OAuth ログイン（`--kimi-login`）または Kimi.ai OAuth ログイン（`--kimi-ai-login`） |
 | Devin | OpenAI | OAuth ログイン |
 | Meta | OpenAI | OAuth ログインまたは `meta-api-key` |
 | Cursor | OpenAI | API キーインポート（`--cursor-login` または管理センター） |
@@ -108,7 +108,8 @@ remote-management:
 ./cli-proxy-api --codex-login          # OpenAI Codex
 ./cli-proxy-api --claude-login         # Anthropic Claude
 ./cli-proxy-api --antigravity-login    # Google Antigravity / Gemini
-./cli-proxy-api --kimi-login           # Kimi
+./cli-proxy-api --kimi-login           # Kimi (Moonshot, platform.kimi.com)
+./cli-proxy-api --kimi-ai-login        # Kimi.ai
 ./cli-proxy-api --xai-login            # xAI Grok
 ./cli-proxy-api --devin-login          # Devin
 ./cli-proxy-api --meta-login           # Meta
