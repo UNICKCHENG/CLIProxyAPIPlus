@@ -103,14 +103,14 @@ func tokensFromRecord(record coreusage.Record) recordTokens {
 	return tokens
 }
 
-// costFor resolves the model price and returns the estimated USD cost.
+// costFor resolves the price from canonical model identities only. Alias is a
+// client-facing grouping label, not a billing identity, so it must not select a
+// price entry.
 func costFor(record coreusage.Record, tokens recordTokens) (float64, bool) {
-	candidates := []string{
+	for _, candidate := range []string{
 		strings.TrimSpace(record.Model),
 		strings.TrimSpace(record.ResponseModel),
-		strings.TrimSpace(record.Alias),
-	}
-	for _, candidate := range candidates {
+	} {
 		if candidate == "" {
 			continue
 		}

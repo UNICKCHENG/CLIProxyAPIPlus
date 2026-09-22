@@ -148,6 +148,35 @@ func TestStoreEstimatesCostFromPriceTable(t *testing.T) {
 		t.Errorf("Cost = %v, want 18", row.Cost)
 	}
 }
+func TestStoreDoesNotBillAliasWhenCanonicalModelIsUnpriced(t *testing.T) {
+	modelprice.ApplyOverrides([]modelprice.Override{
+		{Model: "client-alias", Input: 99, Output: 99},
+	})
+	t.Cleanup(func() { modelprice.ApplyOverrides(nil) })
+
+	store := NewStore(DefaultRetentionDays)
+	record := coreusage.Record{
+		Provider: "openai",
+		Model:    "canonical-model-without-price",
+		Alias:    "client-alias",
+		Detail: coreusage.Detail{
+			TokenBreakdown: completeBreakdown(1000000, 0, 0, 1000000, 0),
+		},
+	}
+	store.Record(record)
+
+	snapshot := store.Snapshot(7)
+	if len(snapshot.Models) != 1 {
+		t.Fatalf("Models has %d rows, want 1", len(snapshot.Models))
+	}
+	row := snapshot.Models[0]
+	if row.Priced != 0 || row.Unpriced != 1 {
+		t.Fatalf("priced=%d unpriced=%d, want priced=0 unpriced=1", row.Priced, row.Unpriced)
+	}
+	if row.Cost != 0 {
+		t.Fatalf("Cost = %v, want 0 when only the alias has a price", row.Cost)
+	}
+}
 
 func TestRetentionPrunesOldBuckets(t *testing.T) {
 	store := NewStore(2)
