@@ -40,6 +40,12 @@ const syntheticCostMap = `{
     "output_cost_per_token": 0.00001,
     "cache_read_input_token_cost": 0.000000125
   },
+  "gemini/gemini-3-flash-preview": {
+    "litellm_provider": "gemini",
+    "mode": "chat",
+    "input_cost_per_token": 0.0000005,
+    "output_cost_per_token": 0.000003
+  },
   "text-embedding-3-large": {
     "litellm_provider": "openai",
     "mode": "embedding",
@@ -168,6 +174,7 @@ func TestLookupMatchesCursorModelIDsByIdentity(t *testing.T) {
 		{model: "claude-5-fable", wantInput: 0.000001},
 		{model: "gpt-5", wantInput: 0.00000125},
 		{model: "gemini-3-pro-preview", wantInput: 0.00000125},
+		{model: "gemini-3-flash", wantInput: 0.0000005},
 		{model: "grok-4.7", wantInput: 0.000002},
 	}
 

@@ -327,8 +327,9 @@ func cursorIdentityAliases(identity string) []string {
 }
 
 // cursorModelIdentity reduces a model ID to stable, order-independent tokens.
-// Release dates and "latest" aliases do not identify a separately priced model.
-// Exact lookup still runs first, so explicitly priced variants always win.
+// Release dates, "latest" and "preview" markers do not identify a separately
+// priced model. Exact lookup still runs first, so explicitly priced variants
+// always win.
 func cursorModelIdentity(model string) string {
 	value := strings.ToLower(strings.TrimSpace(bareModelName(model)))
 	if value == "" {
@@ -339,7 +340,7 @@ func cursorModelIdentity(model string) string {
 	})
 	identity := parts[:0]
 	for _, part := range parts {
-		if part == "" || part == "latest" || isModelReleaseDate(part) {
+		if part == "" || part == "latest" || part == "preview" || isModelReleaseDate(part) {
 			continue
 		}
 		identity = append(identity, part)
