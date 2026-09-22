@@ -181,7 +181,8 @@ func (e *CursorExecutor) CountTokens(_ context.Context, _ *cliproxyauth.Auth, re
 	return cliproxyexecutor.Response{Payload: payload}, nil
 }
 
-// Execute runs a non-streaming completion and returns an OpenAI chat.completion body.
+// Execute runs a non-streaming completion and returns a chat-completion body translated
+// into the client's response protocol.
 func (e *CursorExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
 	if e == nil || e.runtime == nil {
 		return cliproxyexecutor.Response{}, &coreauthStatusError{
@@ -193,7 +194,10 @@ func (e *CursorExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, r
 	if model == "" {
 		model = strings.TrimSpace(gjson.GetBytes(req.Payload, "model").String())
 	}
-	runReq := e.buildRunRequest(auth, req, model, opts)
+	reporter := helps.NewExecutorUsageReporter(ctx, e, model, auth)
+	execReq := req
+	execReq.Payload = cursorUpstreamPayload(ctx, e.cfg, req, model, opts)
+	runReq := e.buildRunRequest(auth, execReq, model, opts)
 	// Track the run so a Close() on this executor cancels it first: the caller then sees
 	// context.Canceled (the manager's cancellation contract) rather than an unclassified
 	// bridge transport failure from the process being killed underneath it.
@@ -203,15 +207,25 @@ func (e *CursorExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth, r
 	defer release()
 	payload, usage, errRun := e.runtime.RunChat(runCtx, runReq)
 	if errRun != nil {
+		if runCtx.Err() == nil {
+			reporter.PublishFailure(ctx, errRun)
+		}
 		return cliproxyexecutor.Response{}, cursorErrorFromRuntime(errRun)
 	}
-	publishCursorUsage(ctx, e, model, auth, usage, opts)
-	return cliproxyexecutor.Response{Payload: payload}, nil
+	publishCursorUsage(ctx, reporter, usage)
+	responseFormat := cursorResponseFormat(opts)
+	var param any
+	out := sdktranslator.TranslateNonStream(ctx, sdktranslator.FormatOpenAI, responseFormat, model, opts.OriginalRequest, runReq.Payload, payload, &param)
+	if responseFormat == sdktranslator.FormatOpenAIResponse {
+		out = helps.EnsureResponsesUsageDetails(out)
+	}
+	return cliproxyexecutor.Response{Payload: out}, nil
 }
 
-// ExecuteStream runs a streaming completion, emitting OpenAI chat-completion chunks. The
-// stream framing decision belongs to the response translator path: this executor emits bare
-// "data: " SSE frames plus the terminating [DONE] marker, matching the other OpenAI-format
+// ExecuteStream runs a streaming completion, emitting chat-completion chunks translated
+// into the client's response protocol. Chunks leave this executor as single "data: " SSE
+// lines without trailing framing: the response translator consumes that shape and the
+// protocol handler adds the final SSE framing, exactly like the other OpenAI-format
 // executors.
 func (e *CursorExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (*cliproxyexecutor.StreamResult, error) {
 	if e == nil || e.runtime == nil {
@@ -224,13 +238,33 @@ func (e *CursorExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.A
 	if model == "" {
 		model = strings.TrimSpace(gjson.GetBytes(req.Payload, "model").String())
 	}
-	runReq := e.buildRunRequest(auth, req, model, opts)
-
+	reporter := helps.NewExecutorUsageReporter(ctx, e, model, auth)
+	execReq := req
+	execReq.Payload = cursorUpstreamPayload(ctx, e.cfg, req, model, opts)
+	runReq := e.buildRunRequest(auth, execReq, model, opts)
+	responseFormat := cursorResponseFormat(opts)
+	claudeInputTokens := helps.NewClaudeInputTokenState(opts.SourceFormat, sdktranslator.FormatOpenAI, responseFormat, opts.OriginalRequest)
+	var translateParam any
 	out := make(chan cliproxyexecutor.StreamChunk)
 	streamCtx, cancel := context.WithCancel(ctx)
 	// Track the stream so a Close() on this executor cancels it before bridges die; the
 	// goroutine below already treats streamCtx cancellation as a normal end of stream.
 	release := e.runtime.TrackInFlight(cancel)
+	emit := func(payload []byte) bool {
+		frame := make([]byte, 0, len(payload)+8)
+		frame = append(frame, "data: "...)
+		frame = append(frame, payload...)
+		chunks := helps.TranslateStreamWithClaudeInputTokens(ctx, sdktranslator.FormatOpenAI, responseFormat, model, opts.OriginalRequest, runReq.Payload, frame, &translateParam, claudeInputTokens)
+		for i := range chunks {
+			select {
+			case out <- cliproxyexecutor.StreamChunk{Payload: chunks[i]}:
+			case <-streamCtx.Done():
+				return false
+			}
+		}
+		return true
+	}
+
 	go func() {
 		defer close(out)
 		defer cancel()
@@ -238,34 +272,38 @@ func (e *CursorExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth.A
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				log.Errorf("cursor stream panic: %v", recovered)
-				out <- cliproxyexecutor.StreamChunk{Err: fmt.Errorf("cursor stream panic: %v", recovered)}
+				select {
+				case out <- cliproxyexecutor.StreamChunk{Err: fmt.Errorf("cursor stream panic: %v", recovered)}:
+				case <-streamCtx.Done():
+				}
 			}
 		}()
 		usage, errRun := e.runtime.RunChatStream(streamCtx, runReq, func(payload []byte) error {
-			frame := make([]byte, 0, len(payload)+8)
-			frame = append(frame, "data: "...)
-			frame = append(frame, payload...)
-			frame = append(frame, '\n', '\n')
-			select {
-			case out <- cliproxyexecutor.StreamChunk{Payload: frame}:
-				return nil
-			case <-streamCtx.Done():
+			if !emit(payload) {
 				// Nobody is reading the output any more; RunChatStream aborts the upstream
 				// run when emit returns, so Cursor stops billing work that is discarded.
 				return streamCtx.Err()
 			}
+			return nil
 		})
 		if errRun != nil {
+			if streamCtx.Err() == nil {
+				reporter.PublishFailure(ctx, errRun)
+			}
 			select {
 			case out <- cliproxyexecutor.StreamChunk{Err: cursorErrorFromRuntime(errRun)}:
 			case <-streamCtx.Done():
 			}
 			return
 		}
-		publishCursorUsage(ctx, e, model, auth, usage, opts)
-		select {
-		case out <- cliproxyexecutor.StreamChunk{Payload: []byte("data: [DONE]\n\n")}:
-		case <-streamCtx.Done():
+		publishCursorUsage(ctx, reporter, usage)
+		doneChunks := helps.TranslateStreamWithClaudeInputTokens(ctx, sdktranslator.FormatOpenAI, responseFormat, model, opts.OriginalRequest, runReq.Payload, []byte("data: [DONE]"), &translateParam, claudeInputTokens)
+		for i := range doneChunks {
+			select {
+			case out <- cliproxyexecutor.StreamChunk{Payload: doneChunks[i]}:
+			case <-streamCtx.Done():
+				return
+			}
 		}
 	}()
 	return &cliproxyexecutor.StreamResult{Chunks: out}, nil
@@ -381,15 +419,44 @@ func cursorErrorFromRuntime(err error) error {
 	}
 }
 
-// publishCursorUsage forwards terminal token accounting to the usage pipeline.
-func publishCursorUsage(ctx context.Context, exec *CursorExecutor, model string, auth *cliproxyauth.Auth, usage *cursorruntime.ChatUsage, _ cliproxyexecutor.Options) {
-	if usage == nil {
+// publishCursorUsage forwards terminal token accounting to the usage pipeline. A nil usage
+// still counts the request so every Cursor call lands in the usage statistics even when the
+// upstream did not report tokens.
+func publishCursorUsage(ctx context.Context, reporter *helps.UsageReporter, usage *cursorruntime.ChatUsage) {
+	if reporter == nil {
 		return
 	}
-	reporter := helps.NewExecutorUsageReporter(ctx, exec, model, auth)
+	if usage == nil {
+		reporter.EnsurePublished(ctx)
+		return
+	}
 	reporter.Publish(ctx, coreusage.Detail{
 		InputTokens:  usage.PromptTokens,
 		OutputTokens: usage.CompletionTokens,
 		TotalTokens:  usage.TotalTokens,
 	})
+}
+
+// cursorResponseFormat resolves the protocol the client expects the response in.
+func cursorResponseFormat(opts cliproxyexecutor.Options) sdktranslator.Format {
+	if format := cliproxyexecutor.ResponseFormatOrSource(opts); format != "" {
+		return format
+	}
+	return sdktranslator.FormatOpenAI
+}
+
+// cursorUpstreamPayload translates the client request into the OpenAI chat-completions
+// payload the Cursor bridge consumes. The bridge only understands OpenAI format, so a
+// Claude/Gemini/Responses client's request must be converted first, mirroring the other
+// OpenAI-format executors.
+func cursorUpstreamPayload(ctx context.Context, cfg *config.Config, req cliproxyexecutor.Request, model string, opts cliproxyexecutor.Options) []byte {
+	from := opts.SourceFormat
+	if from == "" || from == sdktranslator.FormatOpenAI {
+		return req.Payload
+	}
+	originalPayload := req.Payload
+	if len(opts.OriginalRequest) > 0 {
+		originalPayload = opts.OriginalRequest
+	}
+	return helps.TranslateRequestWithCodexMultiAgentV2(ctx, opts.Headers, cfg, from, sdktranslator.FormatOpenAI, model, originalPayload, true)
 }
