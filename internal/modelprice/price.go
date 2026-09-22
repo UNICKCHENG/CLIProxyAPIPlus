@@ -274,6 +274,7 @@ func (t *Table) replaceBase(entries map[string]Price, priorities map[string]int,
 func buildCursorIdentityIndex(prices map[string]Price) map[string]Price {
 	index := make(map[string]Price)
 	ambiguous := make(map[string]struct{})
+	identities := make(map[string]Price)
 	for key, price := range prices {
 		// Provider-qualified rows coexist with their bare winner in entries. Only
 		// index the bare key so reseller-specific rates cannot create false
@@ -285,17 +286,44 @@ func buildCursorIdentityIndex(prices map[string]Price) map[string]Price {
 		if identity == "" {
 			continue
 		}
-		if _, blocked := ambiguous[identity]; blocked {
-			continue
-		}
-		if existing, ok := index[identity]; ok && existing != price {
-			delete(index, identity)
+		if existing, ok := identities[identity]; ok && existing != price {
+			delete(identities, identity)
 			ambiguous[identity] = struct{}{}
 			continue
 		}
+		if _, blocked := ambiguous[identity]; !blocked {
+			identities[identity] = price
+		}
+	}
+	for identity, price := range identities {
 		index[identity] = price
 	}
+	// Cursor can expose a newly released version before the cached LiteLLM map
+	// has the corresponding row. Add only documented same-price compatibility
+	// aliases, and never let an alias overwrite a direct or ambiguous identity.
+	for identity, price := range identities {
+		for _, alias := range cursorIdentityAliases(identity) {
+			if _, blocked := ambiguous[alias]; blocked {
+				continue
+			}
+			if existing, ok := index[alias]; ok {
+				if existing != price {
+					delete(index, alias)
+					ambiguous[alias] = struct{}{}
+				}
+				continue
+			}
+			index[alias] = price
+		}
+	}
 	return index
+}
+
+func cursorIdentityAliases(identity string) []string {
+	if identity == "4-6-grok" {
+		return []string{"4-7-grok"}
+	}
+	return nil
 }
 
 // cursorModelIdentity reduces a model ID to stable, order-independent tokens.

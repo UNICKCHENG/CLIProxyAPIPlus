@@ -70,6 +70,12 @@ const syntheticCostMap = `{
     "input_cost_per_token": 0.000001,
     "output_cost_per_token": 0.000005
   },
+  "xai/grok-4.6": {
+    "litellm_provider": "xai",
+    "mode": "chat",
+    "input_cost_per_token": 0.000002,
+    "output_cost_per_token": 0.000006
+  },
   "some-alias-target": {
     "litellm_provider": "openai",
     "mode": "chat",
@@ -162,6 +168,7 @@ func TestLookupMatchesCursorModelIDsByIdentity(t *testing.T) {
 		{model: "claude-5-fable", wantInput: 0.000001},
 		{model: "gpt-5", wantInput: 0.00000125},
 		{model: "gemini-3-pro-preview", wantInput: 0.00000125},
+		{model: "grok-4.7", wantInput: 0.000002},
 	}
 
 	for _, tc := range cases {
