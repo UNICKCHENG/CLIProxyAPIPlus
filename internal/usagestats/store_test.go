@@ -148,6 +148,37 @@ func TestStoreEstimatesCostFromPriceTable(t *testing.T) {
 		t.Errorf("Cost = %v, want 18", row.Cost)
 	}
 }
+
+func TestStoreEstimatesCursorCostFromCanonicalModelID(t *testing.T) {
+	modelprice.ApplyOverrides([]modelprice.Override{
+		{Model: "claude-sonnet-4-5", Input: 3, Output: 15},
+	})
+	t.Cleanup(func() { modelprice.ApplyOverrides(nil) })
+
+	store := NewStore(DefaultRetentionDays)
+	store.Record(coreusage.Record{
+		Provider: "cursor",
+		Model:    "claude-4.5-sonnet-thinking",
+		AuthID:   "cursor-credential",
+		Detail: coreusage.Detail{
+			TokenBreakdown: completeBreakdown(1000000, 0, 0, 1000000, 0),
+		},
+	})
+
+	snapshot := store.Snapshot(7)
+	if len(snapshot.Models) != 1 || len(snapshot.Providers) != 1 {
+		t.Fatalf("models=%d providers=%d, want one row in each dimension", len(snapshot.Models), len(snapshot.Providers))
+	}
+	for _, row := range []Row{snapshot.Models[0], snapshot.Providers[0]} {
+		if row.Priced != 1 || row.Unpriced != 0 {
+			t.Errorf("row %q priced=%d unpriced=%d, want priced=1 unpriced=0", row.ID, row.Priced, row.Unpriced)
+		}
+		if math.Abs(row.Cost-18) > 1e-9 {
+			t.Errorf("row %q Cost=%v, want 18", row.ID, row.Cost)
+		}
+	}
+}
+
 func TestStoreDoesNotBillAliasWhenCanonicalModelIsUnpriced(t *testing.T) {
 	modelprice.ApplyOverrides([]modelprice.Override{
 		{Model: "client-alias", Input: 99, Output: 99},

@@ -15,6 +15,12 @@ const syntheticCostMap = `{
     "cache_read_input_token_cost": 0.0000003,
     "cache_creation_input_token_cost": 0.00000375
   },
+  "anthropic/claude-sonnet-4-5-thinking": {
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "input_cost_per_token": 0.000007,
+    "output_cost_per_token": 0.000035
+  },
   "openai/gpt-5": {
     "litellm_provider": "openai",
     "mode": "chat",
@@ -45,6 +51,24 @@ const syntheticCostMap = `{
     "input_cost_per_token": 0.000005,
     "output_cost_per_token": 0.000025,
     "output_cost_per_reasoning_token": 0.00004
+  },
+  "anthropic/claude-sonnet-4-20250514": {
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "input_cost_per_token": 0.000003,
+    "output_cost_per_token": 0.000015
+  },
+  "anthropic/claude-sonnet-4-6": {
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "input_cost_per_token": 0.000003,
+    "output_cost_per_token": 0.000015
+  },
+  "anthropic/claude-fable-5": {
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "input_cost_per_token": 0.000001,
+    "output_cost_per_token": 0.000005
   },
   "some-alias-target": {
     "litellm_provider": "openai",
@@ -121,6 +145,108 @@ func TestLookupFallsBackToEffortSuffixStripping(t *testing.T) {
 		if _, ok := table.Lookup(model, ""); !ok {
 			t.Errorf("Lookup(%q) = no match, want the suffix-stripped base model to match", model)
 		}
+	}
+}
+
+func TestLookupMatchesCursorModelIDsByIdentity(t *testing.T) {
+	table := newSyntheticTable(t)
+
+	cases := []struct {
+		model     string
+		wantInput float64
+	}{
+		{model: "claude-4.5-sonnet-thinking", wantInput: 0.000007},
+		{model: "claude-4.6-opus-thinking", wantInput: 0.000005},
+		{model: "claude-4.6-sonnet-thinking", wantInput: 0.000003},
+		{model: "claude-4-sonnet-thinking", wantInput: 0.000003},
+		{model: "claude-5-fable", wantInput: 0.000001},
+		{model: "gpt-5", wantInput: 0.00000125},
+		{model: "gemini-3-pro-preview", wantInput: 0.00000125},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.model, func(t *testing.T) {
+			price, ok := table.Lookup(tc.model, "cursor")
+			if !ok {
+				t.Fatalf("Lookup(%q, cursor) = no match, want a price", tc.model)
+			}
+			if price.InputPerToken != tc.wantInput {
+				t.Errorf("Lookup(%q, cursor).InputPerToken = %v, want %v", tc.model, price.InputPerToken, tc.wantInput)
+			}
+		})
+	}
+}
+
+func TestLookupLeavesUnmatchedCursorRouterIDsUnpriced(t *testing.T) {
+	table := newSyntheticTable(t)
+
+	for _, model := range []string{"auto-smart", "default", "composer-2"} {
+		if _, ok := table.Lookup(model, "cursor"); ok {
+			t.Errorf("Lookup(%q, cursor) matched a price, want no match", model)
+		}
+	}
+}
+
+func TestCursorIdentityLookupPrefersSpecificVariant(t *testing.T) {
+	table := newSyntheticTable(t)
+
+	price, ok := table.Lookup("claude-4.5-sonnet-thinking", "cursor")
+	if !ok {
+		t.Fatal("Lookup() = no match, want the specific thinking variant")
+	}
+	if price.InputPerToken != 0.000007 {
+		t.Errorf("InputPerToken = %v, want the thinking variant rate 0.000007", price.InputPerToken)
+	}
+}
+
+func TestCursorIdentityLookupIsProviderScoped(t *testing.T) {
+	table := newSyntheticTable(t)
+
+	if _, ok := table.Lookup("claude-4.5-sonnet-thinking", "openai"); ok {
+		t.Error("Lookup() applied Cursor ID normalization to a non-Cursor provider")
+	}
+}
+
+func TestCursorIdentityLookupRejectsAmbiguousPrices(t *testing.T) {
+	const ambiguous = `{
+  "claude-sonnet-4-20250514": {
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "input_cost_per_token": 0.000003,
+    "output_cost_per_token": 0.000015
+  },
+  "claude-4-sonnet-20250515": {
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "input_cost_per_token": 0.000004,
+    "output_cost_per_token": 0.000020
+  }
+}`
+	table := NewTable()
+	if _, err := table.ApplyLiteLLM([]byte(ambiguous)); err != nil {
+		t.Fatalf("ApplyLiteLLM() error = %v", err)
+	}
+
+	if _, ok := table.Lookup("claude-4-sonnet-thinking", "cursor"); ok {
+		t.Error("Lookup() matched an ambiguous Cursor identity, want no match")
+	}
+}
+
+func TestCursorIdentityLookupHonoursOverrides(t *testing.T) {
+	table := newSyntheticTable(t)
+	table.SetOverrides(map[string]Price{
+		"claude-sonnet-4-5": {
+			InputPerToken:  ParsePerMillion(9),
+			OutputPerToken: ParsePerMillion(45),
+		},
+	})
+
+	price, ok := table.Lookup("claude-4.5-sonnet-thinking", "cursor")
+	if !ok {
+		t.Fatal("Lookup() = no match, want the normalized override")
+	}
+	if price.Source != "override" || price.InputPerToken != ParsePerMillion(9) {
+		t.Errorf("Lookup() = %+v, want normalized override pricing", price)
 	}
 }
 

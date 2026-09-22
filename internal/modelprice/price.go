@@ -66,10 +66,15 @@ type Table struct {
 	mu sync.RWMutex
 	// entries maps a normalized lookup key to a price.
 	entries map[string]Price
+	// cursorEntries maps a stable model-ID fingerprint to a price. It is kept
+	// separate from entries so synthetic lookup keys never appear in the catalog.
+	cursorEntries map[string]Price
 	// priority tracks the provider priority of the winning entry per key.
 	priority map[string]int
 	// overrides are operator-provided prices; they always win over synced data.
 	overrides map[string]Price
+	// cursorOverrides is the fingerprint index for overrides.
+	cursorOverrides map[string]Price
 
 	source    string
 	updatedAt time.Time
@@ -78,9 +83,11 @@ type Table struct {
 // NewTable returns an empty price table.
 func NewTable() *Table {
 	return &Table{
-		entries:   make(map[string]Price),
-		priority:  make(map[string]int),
-		overrides: make(map[string]Price),
+		entries:         make(map[string]Price),
+		cursorEntries:   make(map[string]Price),
+		priority:        make(map[string]int),
+		overrides:       make(map[string]Price),
+		cursorOverrides: make(map[string]Price),
 	}
 }
 
@@ -185,8 +192,8 @@ func (t *Table) Source() string {
 	return t.source
 }
 
-// Lookup resolves a price for the given model name. The provider hints the
-// selection when several providers publish the same model name.
+// Lookup resolves a price for the given model name. The provider enables
+// provider-specific ID normalization after exact candidates have been tried.
 func (t *Table) Lookup(model string, provider string) (Price, bool) {
 	if t == nil {
 		return Price{}, false
@@ -199,18 +206,29 @@ func (t *Table) Lookup(model string, provider string) (Price, bool) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
+	isCursor := strings.EqualFold(strings.TrimSpace(provider), "cursor")
 	for _, candidate := range candidates {
 		if price, ok := t.overrides[candidate]; ok {
 			price.Source = "override"
 			return price, true
+		}
+		if isCursor {
+			if price, ok := t.cursorOverrides[cursorModelIdentity(candidate)]; ok {
+				price.Source = "override"
+				return price, true
+			}
 		}
 	}
 	for _, candidate := range candidates {
 		if price, ok := t.entries[candidate]; ok {
 			return price, true
 		}
+		if isCursor {
+			if price, ok := t.cursorEntries[cursorModelIdentity(candidate)]; ok {
+				return price, true
+			}
+		}
 	}
-	_ = provider
 	return Price{}, false
 }
 
@@ -233,6 +251,7 @@ func (t *Table) SetOverrides(overrides map[string]Price) {
 	}
 	t.mu.Lock()
 	t.overrides = normalized
+	t.cursorOverrides = buildCursorIdentityIndex(normalized)
 	t.mu.Unlock()
 }
 
@@ -240,11 +259,80 @@ func (t *Table) SetOverrides(overrides map[string]Price) {
 func (t *Table) replaceBase(entries map[string]Price, priorities map[string]int, source string) {
 	t.mu.Lock()
 	t.entries = entries
+	t.cursorEntries = buildCursorIdentityIndex(entries)
 	t.priority = priorities
 	t.source = source
 	// UTC throughout: the value is serialized to the client as-is.
 	t.updatedAt = time.Now().UTC()
 	t.mu.Unlock()
+}
+
+// buildCursorIdentityIndex creates an ambiguity-safe secondary index for the
+// model IDs returned by Cursor. Cursor sometimes orders Claude version and
+// family tokens differently from public provider IDs. A fingerprint is only
+// usable when every matching catalog key publishes the same rates.
+func buildCursorIdentityIndex(prices map[string]Price) map[string]Price {
+	index := make(map[string]Price)
+	ambiguous := make(map[string]struct{})
+	for key, price := range prices {
+		// Provider-qualified rows coexist with their bare winner in entries. Only
+		// index the bare key so reseller-specific rates cannot create false
+		// ambiguity against the first-party price selected by setEntry.
+		if key != bareModelName(key) {
+			continue
+		}
+		identity := cursorModelIdentity(key)
+		if identity == "" {
+			continue
+		}
+		if _, blocked := ambiguous[identity]; blocked {
+			continue
+		}
+		if existing, ok := index[identity]; ok && existing != price {
+			delete(index, identity)
+			ambiguous[identity] = struct{}{}
+			continue
+		}
+		index[identity] = price
+	}
+	return index
+}
+
+// cursorModelIdentity reduces a model ID to stable, order-independent tokens.
+// Release dates and "latest" aliases do not identify a separately priced model.
+// Exact lookup still runs first, so explicitly priced variants always win.
+func cursorModelIdentity(model string) string {
+	value := strings.ToLower(strings.TrimSpace(bareModelName(model)))
+	if value == "" {
+		return ""
+	}
+	parts := strings.FieldsFunc(value, func(r rune) bool {
+		return (r < 'a' || r > 'z') && (r < '0' || r > '9')
+	})
+	identity := parts[:0]
+	for _, part := range parts {
+		if part == "" || part == "latest" || isModelReleaseDate(part) {
+			continue
+		}
+		identity = append(identity, part)
+	}
+	if len(identity) == 0 {
+		return ""
+	}
+	sort.Strings(identity)
+	return strings.Join(identity, "-")
+}
+
+func isModelReleaseDate(value string) bool {
+	if len(value) != 8 || !strings.HasPrefix(value, "20") {
+		return false
+	}
+	for _, char := range value {
+		if char < '0' || char > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // setEntry inserts one entry when it wins the provider priority contest.
