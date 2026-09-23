@@ -271,6 +271,7 @@ CLIProxyAPI 可嵌入到 Go 应用中：
 - [Infinitus](https://github.com/deathemperor/infinitus) —— 原生 macOS 菜单栏应用，可运行多个 Claude 账号。
 - [PiCloud](https://github.com/cookerpapa/pi-cloud) —— 使用 CLIProxyAPI 作为提供方网关的自托管编程 Agent 平台。
 - [cc-status-line](https://github.com/kinka/cc-status-line) —— 展示逐账号配额的 Claude Code 状态栏。
+- [CLIProxy Quota Tray](https://github.com/ZYHUO/CLIProxy-Quota-Tray) —— 跨平台 Electron 托盘仪表盘，展示 ChatGPT/Codex、Claude、Gemini/Antigravity、Grok、Kimi、Cursor 各账号的真实 OAuth 配额窗口，预估用量队列成本，并跟踪 OpenAI/Claude 服务状态。
 
 受 CLIProxyAPI 启发的移植版与替代方案：
 

@@ -340,4 +340,3 @@ func TestCursorExecuteStreamTranslatesClaudeProtocol(t *testing.T) {
 		t.Fatalf("claude streamed text = %q, want %q", text, "Hello world")
 	}
 }
-

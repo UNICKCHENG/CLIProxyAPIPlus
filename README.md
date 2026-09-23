@@ -271,6 +271,7 @@ Projects built on CLIProxyAPI:
 - [Infinitus](https://github.com/deathemperor/infinitus) — native macOS menu bar app for running a fleet of Claude accounts.
 - [PiCloud](https://github.com/cookerpapa/pi-cloud) — self-hosted coding-agent platform using CLIProxyAPI as its provider gateway.
 - [cc-status-line](https://github.com/kinka/cc-status-line) — Claude Code status line showing per-account quotas.
+- [CLIProxy Quota Tray](https://github.com/ZYHUO/CLIProxy-Quota-Tray) — cross-platform Electron tray dashboard showing per-account OAuth quota windows across ChatGPT/Codex, Claude, Gemini/Antigravity, Grok, Kimi, and Cursor, with usage-queue cost estimates and OpenAI/Claude service status tracking.
 
 Community ports and alternatives inspired by CLIProxyAPI:
 

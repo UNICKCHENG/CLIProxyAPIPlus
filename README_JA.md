@@ -271,6 +271,7 @@ CLIProxyAPI を基盤とするプロジェクト：
 - [Infinitus](https://github.com/deathemperor/infinitus) — 複数の Claude アカウントを運用するネイティブ macOS メニューバーアプリ。
 - [PiCloud](https://github.com/cookerpapa/pi-cloud) — CLIProxyAPI をプロバイダーゲートウェイとして使うセルフホスト型コーディングエージェント基盤。
 - [cc-status-line](https://github.com/kinka/cc-status-line) — アカウント別クォータを表示する Claude Code ステータスライン。
+- [CLIProxy Quota Tray](https://github.com/ZYHUO/CLIProxy-Quota-Tray) — ChatGPT/Codex、Claude、Gemini/Antigravity、Grok、Kimi、Cursor の各アカウントの OAuth クォータウィンドウ、利用キューコストの試算、OpenAI/Claude のサービスステータスを表示するクロスプラットフォームな Electron トレイダッシュボード。
 
 CLIProxyAPI に触発された移植版・代替プロジェクト：
 
