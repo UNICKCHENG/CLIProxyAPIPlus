@@ -3,8 +3,10 @@ package common
 import (
 	"strings"
 
+	"github.com/router-for-me/CLIProxyAPI/v7/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v7/internal/util"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 const (
@@ -111,4 +113,41 @@ func BuildClaudeStructuredOutputInstruction(format gjson.Result) string {
 	default:
 		return ""
 	}
+}
+
+// ClaudeSupportsNativeStructuredOutput reports whether the model accepts
+// output_config.format (structured outputs). The registry advertises thinking
+// levels on the Claude 4.6+ generation, which is also where structured outputs
+// are available; older and unknown models keep the instruction fallback.
+func ClaudeSupportsNativeStructuredOutput(model string) bool {
+	mi := registry.LookupModelInfo(model, "claude")
+	return mi != nil && mi.Thinking != nil && len(mi.Thinking.Levels) > 0
+}
+
+// ClaudeStructuredOutputFormat converts a Chat Completions response_format or
+// Responses text.format into the native output_config.format object. It returns
+// nil when the format is absent or carries no schema; json_object stays on the
+// instruction path because it has no schema to enforce.
+func ClaudeStructuredOutputFormat(format gjson.Result) []byte {
+	if strings.ToLower(strings.TrimSpace(format.Get("type").String())) != "json_schema" {
+		return nil
+	}
+	jsonSchema := format.Get("json_schema")
+	schema := jsonSchema.Get("schema")
+	if !schema.Exists() {
+		schema = format.Get("schema")
+	}
+	if !schema.Exists() {
+		return nil
+	}
+	out := []byte(`{"type":"json_schema","schema":{}}`)
+	out, _ = sjson.SetRawBytes(out, "schema", []byte(schema.Raw))
+	name := strings.TrimSpace(jsonSchema.Get("name").String())
+	if name == "" {
+		name = strings.TrimSpace(format.Get("name").String())
+	}
+	if name != "" {
+		out, _ = sjson.SetBytes(out, "name", name)
+	}
+	return out
 }

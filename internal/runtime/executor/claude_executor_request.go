@@ -243,7 +243,7 @@ func claudeCodeCLIBetas(body []byte, requested map[string]bool, oauthToken bool)
 		if beta == claudeServerSideFallbackBeta || beta == claudeFallbackCreditBeta {
 			continue
 		}
-		if requested[beta] {
+		if requested[beta] || (beta == claudeStructuredOutputsBeta && gjson.GetBytes(body, "output_config.format").Exists()) {
 			betas = append(betas, beta)
 		}
 	}

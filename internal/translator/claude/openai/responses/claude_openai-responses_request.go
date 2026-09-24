@@ -186,7 +186,12 @@ func convertOpenAIResponsesRequestToClaude(modelName string, inputRawJSON []byte
 	if !formatResult.Exists() {
 		formatResult = root.Get("response_format")
 	}
-	if formatInstruction := common.BuildClaudeStructuredOutputInstruction(formatResult); formatInstruction != "" {
+	// Native structured outputs (output_config.format) guarantee schema
+	// conformance on 4.6+ models; the instruction scaffold below remains the
+	// fallback for older and unknown models.
+	if formatJSON := common.ClaudeStructuredOutputFormat(formatResult); formatJSON != nil && common.ClaudeSupportsNativeStructuredOutput(modelName) {
+		out, _ = sjson.SetRawBytes(out, "output_config.format", formatJSON)
+	} else if formatInstruction := common.BuildClaudeStructuredOutputInstruction(formatResult); formatInstruction != "" {
 		appendSystemText(formatInstruction, gjson.Result{})
 	}
 

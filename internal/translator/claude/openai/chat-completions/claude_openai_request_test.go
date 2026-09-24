@@ -870,13 +870,51 @@ func TestConvertOpenAIRequestToClaude_ResponseFormatJSONSchema(t *testing.T) {
 	}`)
 
 	out := ConvertOpenAIRequestToClaude("claude-sonnet-4-6", inputJSON, false)
-	system := gjson.GetBytes(out, "system")
-	if !system.Exists() || !system.IsArray() || len(system.Array()) == 0 {
-		t.Fatalf("system blocks missing or empty. Output: %s", string(out))
-	}
 
+	// 4.6+ models take the native structured-outputs path: the schema lives in
+	// output_config.format instead of a system-prompt instruction.
+	if got := gjson.GetBytes(out, "output_config.format.type").String(); got != "json_schema" {
+		t.Fatalf("output_config.format.type = %q, want json_schema. Output: %s", got, string(out))
+	}
+	if got := gjson.GetBytes(out, "output_config.format.name").String(); got != "extracted_facts" {
+		t.Fatalf("output_config.format.name = %q, want extracted_facts. Output: %s", got, string(out))
+	}
+	if !gjson.GetBytes(out, "output_config.format.schema.properties.facts").Exists() {
+		t.Fatalf("expected facts property in output_config.format.schema. Output: %s", string(out))
+	}
+	for _, block := range gjson.GetBytes(out, "system").Array() {
+		if text := block.Get("text").String(); strings.Contains(text, "JSON") {
+			t.Fatalf("expected no structured-output instruction in system prompt on the native path. Output: %s", string(out))
+		}
+	}
+}
+
+func TestConvertOpenAIRequestToClaude_ResponseFormatJSONSchemaLegacyModelKeepsInstruction(t *testing.T) {
+	inputJSON := []byte(`{
+		"model": "claude-3-5-haiku-20241022",
+		"messages": [{"role": "user", "content": "Extract facts from: Yesterday it rained in Beijing."}],
+		"response_format": {
+			"type": "json_schema",
+			"json_schema": {
+				"name": "extracted_facts",
+				"schema": {
+					"type": "object",
+					"properties": {
+						"facts": {"type": "array", "items": {"type": "string"}}
+					},
+					"required": ["facts"]
+				}
+			}
+		}
+	}`)
+
+	// Pre-4.6 models and unknown IDs keep the system-instruction fallback.
+	out := ConvertOpenAIRequestToClaude("claude-3-5-haiku-20241022", inputJSON, false)
+	if gjson.GetBytes(out, "output_config.format").Exists() {
+		t.Fatalf("legacy model must not receive output_config.format. Output: %s", string(out))
+	}
 	foundSchemaInstruction := false
-	for _, block := range system.Array() {
+	for _, block := range gjson.GetBytes(out, "system").Array() {
 		text := block.Get("text").String()
 		if strings.Contains(text, "JSON") && strings.Contains(text, "facts") {
 			foundSchemaInstruction = true
@@ -884,7 +922,7 @@ func TestConvertOpenAIRequestToClaude_ResponseFormatJSONSchema(t *testing.T) {
 		}
 	}
 	if !foundSchemaInstruction {
-		t.Fatalf("expected structured output instructions containing schema in system prompt. Output: %s", string(out))
+		t.Fatalf("expected structured output instructions in system prompt for legacy model. Output: %s", string(out))
 	}
 }
 

@@ -2258,19 +2258,19 @@ func TestConvertOpenAIResponsesRequestToClaude_TextFormatStructuredOutput(t *tes
 			}
 		}`)
 		out := ConvertOpenAIResponsesRequestToClaude("claude-sonnet-4-6", input, false)
-		system := gjson.GetBytes(out, "system")
-		if !system.Exists() || len(system.Array()) == 0 {
-			t.Fatalf("system blocks missing. Output: %s", string(out))
+		if got := gjson.GetBytes(out, "output_config.format.type").String(); got != "json_schema" {
+			t.Fatalf("output_config.format.type = %q, want json_schema. Output: %s", got, string(out))
 		}
-		found := false
-		for _, block := range system.Array() {
-			if strings.Contains(block.Get("text").String(), "facts") {
-				found = true
-				break
+		if got := gjson.GetBytes(out, "output_config.format.name").String(); got != "extracted_facts" {
+			t.Fatalf("output_config.format.name = %q, want extracted_facts. Output: %s", got, string(out))
+		}
+		if !gjson.GetBytes(out, "output_config.format.schema.properties.facts").Exists() {
+			t.Fatalf("expected facts property in output_config.format.schema. Output: %s", string(out))
+		}
+		for _, block := range gjson.GetBytes(out, "system").Array() {
+			if text := block.Get("text").String(); strings.Contains(text, "JSON") {
+				t.Fatalf("expected no structured-output instruction in system prompt on the native path. Output: %s", string(out))
 			}
-		}
-		if !found {
-			t.Fatalf("expected structured schema instruction in system prompt. Output: %s", string(out))
 		}
 	})
 
@@ -2301,6 +2301,40 @@ func TestConvertOpenAIResponsesRequestToClaude_TextFormatStructuredOutput(t *tes
 		}
 	})
 
+	t.Run("legacy model keeps instruction fallback", func(t *testing.T) {
+		input := []byte(`{
+			"model": "claude-3-5-haiku-20241022",
+			"input": "Extract facts.",
+			"text": {
+				"format": {
+					"type": "json_schema",
+					"name": "extracted_facts",
+					"schema": {
+						"type": "object",
+						"properties": {
+							"facts": {"type": "array", "items": {"type": "string"}}
+						},
+						"required": ["facts"]
+					}
+				}
+			}
+		}`)
+		out := ConvertOpenAIResponsesRequestToClaude("claude-3-5-haiku-20241022", input, false)
+		if gjson.GetBytes(out, "output_config.format").Exists() {
+			t.Fatalf("legacy model must not receive output_config.format. Output: %s", string(out))
+		}
+		found := false
+		for _, block := range gjson.GetBytes(out, "system").Array() {
+			if strings.Contains(block.Get("text").String(), "facts") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected structured schema instruction in system prompt. Output: %s", string(out))
+		}
+	})
+
 	t.Run("preserves_existing_instructions_and_precedence", func(t *testing.T) {
 		input := []byte(`{
 			"model": "claude-sonnet-4-6",
@@ -2319,27 +2353,24 @@ func TestConvertOpenAIResponsesRequestToClaude_TextFormatStructuredOutput(t *tes
 			}
 		}`)
 		out := ConvertOpenAIResponsesRequestToClaude("claude-sonnet-4-6", input, false)
-		system := gjson.GetBytes(out, "system")
-		if !system.Exists() || len(system.Array()) < 2 {
-			t.Fatalf("expected at least 2 system blocks. Output: %s", string(out))
+		if got := gjson.GetBytes(out, "output_config.format.name").String(); got != "winning_schema" {
+			t.Fatalf("output_config.format.name = %q, want winning_schema (text.format takes precedence). Output: %s", got, string(out))
+		}
+		if !gjson.GetBytes(out, "output_config.format.schema.properties.item").Exists() {
+			t.Fatalf("expected item property in output_config.format.schema. Output: %s", string(out))
 		}
 		hasInstructions := false
-		hasWinningSchema := false
-		hasFallbackObject := false
-		for _, block := range system.Array() {
+		for _, block := range gjson.GetBytes(out, "system").Array() {
 			text := block.Get("text").String()
 			if strings.Contains(text, "Be concise.") {
 				hasInstructions = true
 			}
-			if strings.Contains(text, "winning_schema") && strings.Contains(text, "Primary facts") && strings.Contains(text, "item") {
-				hasWinningSchema = true
-			}
-			if strings.Contains(text, "valid JSON object") {
-				hasFallbackObject = true
+			if strings.Contains(text, "JSON") {
+				t.Fatalf("expected no structured-output instruction in system prompt on the native path. Output: %s", string(out))
 			}
 		}
-		if !hasInstructions || !hasWinningSchema || hasFallbackObject {
-			t.Fatalf("expected instructions and winning schema without fallback. Output: %s", string(out))
+		if !hasInstructions {
+			t.Fatalf("expected operator instructions to remain in system prompt. Output: %s", string(out))
 		}
 	})
 }

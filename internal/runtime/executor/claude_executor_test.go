@@ -7957,6 +7957,11 @@ func TestClaudeCodeCLIBetas_MatchesObservedClientMatrix(t *testing.T) {
 			want:      constants + ",effort-2025-11-24,structured-outputs-2025-12-15",
 		},
 		{
+			name: "structured outputs attaches on output_config.format body shape",
+			body: `{"model":"claude-opus-4-6","output_config":{"format":{"type":"json_schema","schema":{"type":"object"}}}}`,
+			want: constants + ",effort-2025-11-24,structured-outputs-2025-12-15",
+		},
+		{
 			name:      "unknown caller beta is not smuggled into the baseline",
 			body:      `{"model":"claude-opus-4-6"}`,
 			requested: map[string]bool{"totally-made-up-2030-01-01": true},

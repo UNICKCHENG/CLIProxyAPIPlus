@@ -299,7 +299,13 @@ func convertOpenAIRequestToClaude(modelName string, inputRawJSON []byte, stream,
 		messageBlocks = messageAccumulator.Messages()
 	}
 
-	if formatInstruction := common.BuildClaudeStructuredOutputInstruction(root.Get("response_format")); formatInstruction != "" {
+	responseFormat := root.Get("response_format")
+	// Native structured outputs (output_config.format) guarantee schema
+	// conformance on 4.6+ models; the instruction scaffold below remains the
+	// fallback for older and unknown models.
+	if formatJSON := common.ClaudeStructuredOutputFormat(responseFormat); formatJSON != nil && common.ClaudeSupportsNativeStructuredOutput(modelName) {
+		out, _ = sjson.SetRawBytes(out, "output_config.format", formatJSON)
+	} else if formatInstruction := common.BuildClaudeStructuredOutputInstruction(responseFormat); formatInstruction != "" {
 		systemBlock := []byte(`{"type":"text","text":""}`)
 		systemBlock, _ = sjson.SetBytes(systemBlock, "text", formatInstruction)
 		systemBlocks = append(systemBlocks, systemBlock)
