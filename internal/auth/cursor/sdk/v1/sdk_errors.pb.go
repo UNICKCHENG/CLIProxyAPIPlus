@@ -347,7 +347,7 @@ const file_sdk_v1_sdk_errors_proto_rawDesc = "" +
 	"\x1dSDK_ERROR_CODE_INTERNAL_ERROR\x10\x14\x12#\n" +
 	"\x1fSDK_ERROR_CODE_CLIENT_CANCELLED\x10\x15B\xae\x01\n" +
 	"\n" +
-	"com.sdk.v1B\x0eSdkErrorsProtoP\x01ZIgithub.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor/sdk/v1;sdkv1\xa2\x02\x03SXX\xaa\x02\x06Sdk.V1\xba\x02\vCursorSdkV1\xca\x02\x06Sdk\\V1\xe2\x02\x12Sdk\\V1\\GPBMetadata\xea\x02\aSdk::V1b\x06proto3"
+	"com.sdk.v1B\x0eSdkErrorsProtoP\x01ZIgithub.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor/sdk/v1;sdkv1\xa2\x02\x03SXX\xaa\x02\x06Sdk.V1\xba\x02\vCursorSdkV1\xca\x02\x06Sdk\\V1\xe2\x02\x12Sdk\\V1\\GPBMetadata\xea\x02\aSdk::V1b\x06proto3"
 
 var (
 	file_sdk_v1_sdk_errors_proto_rawDescOnce sync.Once

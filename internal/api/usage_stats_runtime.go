@@ -7,10 +7,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/router-for-me/CLIProxyAPI/v7/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v7/internal/modelprice"
-	"github.com/router-for-me/CLIProxyAPI/v7/internal/usagestats"
-	"github.com/router-for-me/CLIProxyAPI/v7/internal/util"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/modelprice"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/usagestats"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
 
 // applyUsageStatsConfig wires the consumption statistics aggregator and the

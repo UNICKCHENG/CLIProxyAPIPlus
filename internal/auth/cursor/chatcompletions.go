@@ -11,7 +11,7 @@ import (
 	"github.com/tidwall/gjson"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	sdkv1 "github.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor/sdk/v1"
+	sdkv1 "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor/sdk/v1"
 )
 
 // chatRequest is the Cursor-facing view of an OpenAI chat completion request. An agent turn takes

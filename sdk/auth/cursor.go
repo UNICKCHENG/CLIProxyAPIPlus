@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	cursorruntime "github.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor"
-	"github.com/router-for-me/CLIProxyAPI/v7/internal/config"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v7/sdk/cliproxy/auth"
+	cursorruntime "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
 // CursorAuthenticator imports Cursor dashboard API keys. Cursor is not an OAuth

@@ -357,7 +357,7 @@ const file_sdk_v1_sdk_cursor_service_proto_rawDesc = "" +
 	"ListModels\x12\x19.sdk.v1.ListModelsRequest\x1a\x1a.sdk.v1.ListModelsResponse\x12U\n" +
 	"\x10ListRepositories\x12\x1f.sdk.v1.ListRepositoriesRequest\x1a .sdk.v1.ListRepositoriesResponseB\xb5\x01\n" +
 	"\n" +
-	"com.sdk.v1B\x15SdkCursorServiceProtoP\x01ZIgithub.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor/sdk/v1;sdkv1\xa2\x02\x03SXX\xaa\x02\x06Sdk.V1\xba\x02\vCursorSdkV1\xca\x02\x06Sdk\\V1\xe2\x02\x12Sdk\\V1\\GPBMetadata\xea\x02\aSdk::V1b\x06proto3"
+	"com.sdk.v1B\x15SdkCursorServiceProtoP\x01ZIgithub.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor/sdk/v1;sdkv1\xa2\x02\x03SXX\xaa\x02\x06Sdk.V1\xba\x02\vCursorSdkV1\xca\x02\x06Sdk\\V1\xe2\x02\x12Sdk\\V1\\GPBMetadata\xea\x02\aSdk::V1b\x06proto3"
 
 var (
 	file_sdk_v1_sdk_cursor_service_proto_rawDescOnce sync.Once

@@ -147,7 +147,7 @@ const file_sdk_v1_sdk_store_callback_service_proto_rawDesc = "" +
 	"\x17SdkStoreCallbackService\x12@\n" +
 	"\tCallStore\x12\x18.sdk.v1.CallStoreRequest\x1a\x19.sdk.v1.CallStoreResponseB\xbc\x01\n" +
 	"\n" +
-	"com.sdk.v1B\x1cSdkStoreCallbackServiceProtoP\x01ZIgithub.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor/sdk/v1;sdkv1\xa2\x02\x03SXX\xaa\x02\x06Sdk.V1\xba\x02\vCursorSdkV1\xca\x02\x06Sdk\\V1\xe2\x02\x12Sdk\\V1\\GPBMetadata\xea\x02\aSdk::V1b\x06proto3"
+	"com.sdk.v1B\x1cSdkStoreCallbackServiceProtoP\x01ZIgithub.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor/sdk/v1;sdkv1\xa2\x02\x03SXX\xaa\x02\x06Sdk.V1\xba\x02\vCursorSdkV1\xca\x02\x06Sdk\\V1\xe2\x02\x12Sdk\\V1\\GPBMetadata\xea\x02\aSdk::V1b\x06proto3"
 
 var (
 	file_sdk_v1_sdk_store_callback_service_proto_rawDescOnce sync.Once

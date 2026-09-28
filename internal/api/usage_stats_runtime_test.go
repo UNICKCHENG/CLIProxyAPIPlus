@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v7/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v7/internal/modelprice"
-	"github.com/router-for-me/CLIProxyAPI/v7/internal/usagestats"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/modelprice"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/usagestats"
 )
 
 // The consumption statistics subsystem exposes exactly one config key, the

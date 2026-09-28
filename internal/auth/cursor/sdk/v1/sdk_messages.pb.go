@@ -4275,7 +4275,7 @@ const file_sdk_v1_sdk_messages_proto_rawDesc = "" +
 	"\x17AGENT_MODE_OPTION_AGENT\x10\x01\x12\x1a\n" +
 	"\x16AGENT_MODE_OPTION_PLAN\x10\x02B\xb0\x01\n" +
 	"\n" +
-	"com.sdk.v1B\x10SdkMessagesProtoP\x01ZIgithub.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor/sdk/v1;sdkv1\xa2\x02\x03SXX\xaa\x02\x06Sdk.V1\xba\x02\vCursorSdkV1\xca\x02\x06Sdk\\V1\xe2\x02\x12Sdk\\V1\\GPBMetadata\xea\x02\aSdk::V1b\x06proto3"
+	"com.sdk.v1B\x10SdkMessagesProtoP\x01ZIgithub.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor/sdk/v1;sdkv1\xa2\x02\x03SXX\xaa\x02\x06Sdk.V1\xba\x02\vCursorSdkV1\xca\x02\x06Sdk\\V1\xe2\x02\x12Sdk\\V1\\GPBMetadata\xea\x02\aSdk::V1b\x06proto3"
 
 var (
 	file_sdk_v1_sdk_messages_proto_rawDescOnce sync.Once

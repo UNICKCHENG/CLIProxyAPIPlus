@@ -13,8 +13,8 @@ import (
 
 	"connectrpc.com/connect"
 
-	sdkv1 "github.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor/sdk/v1"
-	"github.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor/sdk/v1/sdkv1connect"
+	sdkv1 "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor/sdk/v1"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor/sdk/v1/sdkv1connect"
 )
 
 // startToolCallback listens on loopback and registers the URL with the bridge so CallCustomTool

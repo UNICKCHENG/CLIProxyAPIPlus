@@ -15,8 +15,8 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	sdkv1 "github.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor/sdk/v1"
-	"github.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor/sdk/v1/sdkv1connect"
+	sdkv1 "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor/sdk/v1"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor/sdk/v1/sdkv1connect"
 )
 
 // fakeBridgeToken is the bearer token the fake service expects, standing in for the per-process

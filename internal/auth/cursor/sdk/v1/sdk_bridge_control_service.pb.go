@@ -401,7 +401,7 @@ const file_sdk_v1_sdk_bridge_control_service_proto_rawDesc = "" +
 	"GetVersion\x12\x19.sdk.v1.GetVersionRequest\x1a\x1a.sdk.v1.GetVersionResponse\x12R\n" +
 	"\x0fSetToolCallback\x12\x1e.sdk.v1.SetToolCallbackRequest\x1a\x1f.sdk.v1.SetToolCallbackResponseB\xbc\x01\n" +
 	"\n" +
-	"com.sdk.v1B\x1cSdkBridgeControlServiceProtoP\x01ZIgithub.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor/sdk/v1;sdkv1\xa2\x02\x03SXX\xaa\x02\x06Sdk.V1\xba\x02\vCursorSdkV1\xca\x02\x06Sdk\\V1\xe2\x02\x12Sdk\\V1\\GPBMetadata\xea\x02\aSdk::V1b\x06proto3"
+	"com.sdk.v1B\x1cSdkBridgeControlServiceProtoP\x01ZIgithub.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor/sdk/v1;sdkv1\xa2\x02\x03SXX\xaa\x02\x06Sdk.V1\xba\x02\vCursorSdkV1\xca\x02\x06Sdk\\V1\xe2\x02\x12Sdk\\V1\\GPBMetadata\xea\x02\aSdk::V1b\x06proto3"
 
 var (
 	file_sdk_v1_sdk_bridge_control_service_proto_rawDescOnce sync.Once

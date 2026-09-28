@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	cursorruntime "github.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor"
-	"github.com/router-for-me/CLIProxyAPI/v7/internal/config"
+	cursorruntime "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 )
 
 // fakeCursorRuntime stands in for the native runtime behind the import endpoint.

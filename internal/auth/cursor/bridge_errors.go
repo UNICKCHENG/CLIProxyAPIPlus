@@ -9,7 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	sdkv1 "github.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor/sdk/v1"
+	sdkv1 "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor/sdk/v1"
 )
 
 // upstreamFailure describes a failed call in the terms the host classifies on.

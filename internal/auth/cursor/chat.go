@@ -8,7 +8,7 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	sdkv1 "github.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor/sdk/v1"
+	sdkv1 "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor/sdk/v1"
 )
 
 // ChatRunRequest is one inference request resolved from the executor: the persisted credential

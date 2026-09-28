@@ -5,7 +5,7 @@ managed:
   enabled: true
   override:
     - file_option: go_package_prefix
-      value: github.com/router-for-me/CLIProxyAPI/v7/internal/auth/cursor
+      value: github.com/router-for-me/CLIProxyAPI/v8/internal/auth/cursor
 inputs:
   - directory: proto
 plugins:
