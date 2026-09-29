@@ -375,7 +375,7 @@ func TestConfigV8DeleteLastField(t *testing.T) {
 		{"websocket", "ws-auth: false\n", "oauth/providers/aistudio/ws-auth", func(cfg *config.Config) bool { return cfg.WebsocketAuth }},
 		{"debug", "debug: true\n", "observability/logs/debug", func(cfg *config.Config) bool { return !cfg.Debug }},
 		{"sibling", "routing: {strategy: fill-first, retry: {request-retry: 3}}\n", "routing/retry/request-retry", func(cfg *config.Config) bool { return cfg.RequestRetry == 0 && cfg.Routing.Strategy == "fill-first" }},
-		{"provider", "oauth: {providers: {codex: {disable-codex-cloaking: true}}}\n", "oauth/providers/codex/disable-codex-cloaking", func(cfg *config.Config) bool { return !cfg.Codex.DisableCodexCloaking }},
+		{"provider", "oauth: {providers: {codex: {identity-confuse: true}}}\n", "oauth/providers/codex/identity-confuse", func(cfg *config.Config) bool { return !cfg.Codex.IdentityConfuse }},
 		{"excluded models", "oauth: {excluded-models: {codex: [blocked-model]}}\n", "oauth/excluded-models", func(cfg *config.Config) bool { return len(cfg.OAuthExcludedModels) == 0 }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

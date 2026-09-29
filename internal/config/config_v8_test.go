@@ -619,7 +619,7 @@ func TestV8MigrationPreservesEmptyLegacyContainers(t *testing.T) {
 func TestV8EmptyLegacyContainersKeepNewValues(t *testing.T) {
 	raw := []byte(`port: 8317
 tls: null
-codex: {disable-codex-cloaking: true, live-media-relay: {}}
+codex: {identity-confuse: true, live-media-relay: {}}
 server: {tls: {enable: true, cert: server.crt, key: server.key}}
 oauth: {providers: {codex: {live-media-relay: {max-sessions: 12}}}}
 `)
@@ -632,7 +632,7 @@ oauth: {providers: {codex: {live-media-relay: {max-sessions: 12}}}}
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !cfg.TLS.Enable || cfg.TLS.Cert != "server.crt" || cfg.TLS.Key != "server.key" || cfg.Codex.LiveMediaRelay.MaxSessions != 12 || !cfg.Codex.DisableCodexCloaking {
+		if !cfg.TLS.Enable || cfg.TLS.Cert != "server.crt" || cfg.TLS.Key != "server.key" || cfg.Codex.LiveMediaRelay.MaxSessions != 12 || !cfg.Codex.IdentityConfuse {
 			t.Fatal("empty legacy block overwrote new values or a non-empty sibling")
 		}
 		var doc yaml.Node
@@ -642,7 +642,7 @@ oauth: {providers: {codex: {live-media-relay: {max-sessions: 12}}}}
 		if yamlPath(doc.Content[0], "tls") != nil || yamlPath(doc.Content[0], "codex.live-media-relay") != nil {
 			t.Fatal("conflicting empty legacy blocks were not removed")
 		}
-		if !migrate && yamlPath(doc.Content[0], "codex.disable-codex-cloaking") == nil {
+		if !migrate && yamlPath(doc.Content[0], "codex.identity-confuse") == nil {
 			t.Fatal("conflict cleanup migrated a non-conflicting legacy sibling")
 		}
 	}
