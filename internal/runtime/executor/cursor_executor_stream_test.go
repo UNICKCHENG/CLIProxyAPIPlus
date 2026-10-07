@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -114,7 +115,7 @@ func newCursorExecutorWithStub(t *testing.T) (*CursorExecutor, *cursorUsageRecor
 		t.Fatalf("bind stub bridge: %v", errBind)
 	}
 	t.Cleanup(exec.Close)
-	recorder := &cursorUsageRecorder{}
+	recorder := &cursorUsageRecorder{updated: make(chan struct{}, 1)}
 	coreusage.RegisterNamedPlugin("cursor-executor-test-recorder", recorder)
 	return exec, recorder
 }
@@ -122,26 +123,42 @@ func newCursorExecutorWithStub(t *testing.T) (*CursorExecutor, *cursorUsageRecor
 // cursorUsageRecorder captures usage records published through the default manager so
 // tests can assert what landed in the usage statistics pipeline.
 type cursorUsageRecorder struct {
+	mu      sync.Mutex
 	records []coreusage.Record
+	updated chan struct{}
 }
 
 func (r *cursorUsageRecorder) HandleUsage(_ context.Context, record coreusage.Record) {
+	r.mu.Lock()
 	r.records = append(r.records, record)
+	r.mu.Unlock()
+	select {
+	case r.updated <- struct{}{}:
+	default:
+	}
 }
 
 func (r *cursorUsageRecorder) waitForCursor(t *testing.T, model string) coreusage.Record {
 	t.Helper()
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
+	timer := time.NewTimer(3 * time.Second)
+	defer timer.Stop()
+	for {
+		r.mu.Lock()
 		for _, record := range r.records {
 			if record.Provider == "cursor" && record.Model == model {
+				r.mu.Unlock()
 				return record
 			}
 		}
-		time.Sleep(10 * time.Millisecond)
+		count := len(r.records)
+		r.mu.Unlock()
+		select {
+		case <-r.updated:
+		case <-timer.C:
+			t.Fatalf("no cursor usage record published for model %q (records: %d)", model, count)
+			return coreusage.Record{}
+		}
 	}
-	t.Fatalf("no cursor usage record published for model %q (records: %d)", model, len(r.records))
-	return coreusage.Record{}
 }
 
 // TestCursorExecuteStreamEmitsSingleFramedChunks is the regression test for the doubled
