@@ -16,7 +16,10 @@ permissions:
 
 jobs:
   retarget:
-    if: github.actor != 'github-actions[bot]'
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      !(github.event.pull_request.user.login == github.repository_owner &&
+        startsWith(github.event.pull_request.head.ref, 'codex/upstream-sync-'))
     runs-on: ubuntu-latest
     steps:
       - name: Retarget PR base to dev
