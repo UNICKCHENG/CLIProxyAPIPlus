@@ -81,7 +81,7 @@ func NewHandler(cfg *config.Config, configFilePath string, manager *coreauth.Man
 	envSecret = strings.TrimSpace(envSecret)
 
 	h := &Handler{
-		cfg:                 cfg,
+		cfg:                 cfg.CloneForRuntime(),
 		configFilePath:      configFilePath,
 		failedAttempts:      make(map[string]*attemptInfo),
 		authManager:         manager,
@@ -133,8 +133,9 @@ func (h *Handler) SetConfig(cfg *config.Config) {
 	if h == nil {
 		return
 	}
+	cloned := cfg.CloneForRuntime()
 	h.mu.Lock()
-	h.cfg = cfg
+	h.cfg = cloned
 	h.mu.Unlock()
 }
 
@@ -144,7 +145,9 @@ func (h *Handler) SetAuthManager(manager *coreauth.Manager) {
 		return
 	}
 	h.mu.Lock()
-	h.authManager = manager
+	if h.authManager != manager {
+		h.authManager = manager
+	}
 	h.mu.Unlock()
 }
 
@@ -154,7 +157,9 @@ func (h *Handler) SetPluginHost(host *pluginhost.Host) {
 		return
 	}
 	h.mu.Lock()
-	h.pluginHost = host
+	if h.pluginHost != host {
+		h.pluginHost = host
+	}
 	h.mu.Unlock()
 }
 
@@ -313,6 +318,7 @@ func (h *Handler) AuthenticateManagementKey(clientIP string, localClient bool, p
 		return false, http.StatusForbidden, "remote management disabled"
 	}
 
+	h.mu.Lock()
 	cfg := h.cfg
 	var (
 		allowRemote bool
@@ -322,6 +328,7 @@ func (h *Handler) AuthenticateManagementKey(clientIP string, localClient bool, p
 		allowRemote = cfg.RemoteManagement.AllowRemote
 		secretHash = cfg.RemoteManagement.SecretKey
 	}
+	h.mu.Unlock()
 	if h.allowRemoteOverride {
 		allowRemote = true
 	}
