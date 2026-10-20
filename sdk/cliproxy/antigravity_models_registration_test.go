@@ -397,6 +397,20 @@ func TestAntigravityAuthUpdateWithSkipPersistStillPersistsHintsAcrossRestart(t *
 	}
 }
 
+type antigravityPublicationObserver struct {
+	clientID  string
+	published chan struct{}
+	once      sync.Once
+}
+
+func (h *antigravityPublicationObserver) OnModelsRegistered(_ context.Context, _ string, clientID string, _ []*ModelInfo) {
+	if clientID == h.clientID {
+		h.once.Do(func() { close(h.published) })
+	}
+}
+
+func (h *antigravityPublicationObserver) OnModelsUnregistered(context.Context, string, string) {}
+
 type flakyAntigravityHintStore struct {
 	*sdkAuth.FileTokenStore
 	saveMu           sync.Mutex
@@ -712,6 +726,10 @@ func TestAntigravityBlockedHintPersistenceDoesNotBlockPublicationOrOtherAccounts
 		GlobalModelRegistry().UnregisterClient(authB.ID)
 	})
 
+	publication := &antigravityPublicationObserver{clientID: authB.ID, published: make(chan struct{})}
+	SetGlobalModelRegistryHook(publication)
+	t.Cleanup(func() { SetGlobalModelRegistryHook(nil) })
+
 	// Block all subsequent store Save calls (holding store-wide saveMu).
 	store.blockAll.Store(true)
 	svc.registerModelsForAuth(t.Context(), authA)
@@ -751,8 +769,19 @@ func TestAntigravityBlockedHintPersistenceDoesNotBlockPublicationOrOtherAccounts
 		svc.WaitAntigravityProbes()
 		t.Fatal("stalled persistence on authA blocked subsequent probe for authA")
 	}
-	// Wait for authA's refreshed persistence to preempt authA's first Save and enter Save
-	// (which happens after applyAntigravityModelHints published authA's updated catalog).
+	// The registry hook observes actual publication; the HTTP handler signal
+	// alone does not prove the response has been parsed and applied.
+	select {
+	case <-publication.published:
+	case <-time.After(time.Second):
+		cancelLifetime()
+		svc.WaitAntigravityProbes()
+		t.Fatal("authB model was not published while authA persistence was stalled")
+	}
+	if !GlobalModelRegistry().ClientSupportsModel(authB.ID, "gemini-3-flash") {
+		t.Fatal("authB publication did not retain its model")
+	}
+	// authA's next persistence starts after its refreshed catalog is published.
 	select {
 	case <-store.saveEntered:
 	case <-time.After(time.Second):

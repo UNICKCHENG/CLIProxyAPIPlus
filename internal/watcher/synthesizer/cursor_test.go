@@ -90,28 +90,32 @@ func TestSynthesizeCursorConfiguredWeight(t *testing.T) {
 	}
 }
 
-// TestSynthesizeCursorAuthExclusionMerge proves per-account exclusions merge with the global
-// cursor channel into the combined attribute.
-func TestSynthesizeCursorAuthExclusionMerge(t *testing.T) {
-	cfg := &config.Config{}
-	cfg.OAuthExcludedModels = map[string][]string{"cursor": {"global-*"}}
-	ctx := cursorSynthesisContext(t, cfg)
-	path := filepath.Join(ctx.AuthDir, "cursor-x.json")
-	raw := `{"type":"cursor","api_key":"key_abc","excluded_models":["auto-smart"]}`
-	auths, err := synthesizeFileAuths(ctx, path, []byte(raw))
-	if err != nil {
-		t.Fatalf("synthesizeFileAuths() error = %v", err)
-	}
-	combined := auths[0].Attributes["excluded_models"]
-	if combined == "" {
-		t.Fatal("excluded_models attribute is empty")
-	}
-	// The list is a sorted set joined by comma; both entries must survive.
-	if !jsonContains(combined, "auto-smart") || !jsonContains(combined, "global-*") {
-		t.Fatalf("excluded_models = %q, want both per-account and global entries", combined)
-	}
-	if auths[0].Attributes["auth_kind"] != "oauth" {
-		t.Fatalf("auth_kind = %q", auths[0].Attributes["auth_kind"])
+// TestSynthesizeCursorAuthExclusionPriority keeps credential rules separate from
+// global fallback rules, matching the shared OAuth registration policy.
+func TestSynthesizeCursorAuthExclusionPriority(t *testing.T) {
+	for _, tc := range []struct{ name, fields, want string }{
+		{"credential override", `,"excluded_models":["auto-smart"]`, "auto-smart"},
+		{"missing inherits", ``, ""},
+		{"empty inherits", `,"excluded_models":[]`, ""},
+		{"null inherits", `,"excluded_models":null`, ""},
+		{"invalid retains valid rules", `,"excluded_models":["auto-smart",42]`, "auto-smart"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{OAuthExcludedModels: map[string][]string{"cursor": {"global-*"}}}
+			ctx := cursorSynthesisContext(t, cfg)
+			path := filepath.Join(ctx.AuthDir, "cursor-x.json")
+			raw := `{"type":"cursor","api_key":"key_abc"` + tc.fields + `}`
+			auths, err := synthesizeFileAuths(ctx, path, []byte(raw))
+			if err != nil || len(auths) != 1 {
+				t.Fatalf("synthesizeFileAuths() = %v, %v", auths, err)
+			}
+			if got := auths[0].Attributes["excluded_models"]; got != tc.want {
+				t.Fatalf("excluded_models = %q, want %q", got, tc.want)
+			}
+			if auths[0].Attributes["auth_kind"] != "oauth" {
+				t.Fatalf("auth_kind = %q", auths[0].Attributes["auth_kind"])
+			}
+		})
 	}
 }
 

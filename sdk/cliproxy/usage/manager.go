@@ -282,27 +282,21 @@ func StreamFromContext(ctx context.Context) bool {
 }
 
 // WithAccessProvider stores the client authentication provider identifier for usage sinks.
+// An explicit empty value prevents fallback to a request context that may be reused.
 func WithAccessProvider(ctx context.Context, provider string) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	provider = strings.TrimSpace(provider)
-	if provider == "" {
-		return ctx
-	}
-	return context.WithValue(ctx, accessProviderContextKey{}, provider)
+	return context.WithValue(ctx, accessProviderContextKey{}, strings.TrimSpace(provider))
 }
 
 // WithAPIKey stores the client API key for usage sinks.
+// An explicit empty value prevents fallback to a request context that may be reused.
 func WithAPIKey(ctx context.Context, apiKey string) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	apiKey = strings.TrimSpace(apiKey)
-	if apiKey == "" {
-		return ctx
-	}
-	return context.WithValue(ctx, apiKeyContextKey{}, apiKey)
+	return context.WithValue(ctx, apiKeyContextKey{}, strings.TrimSpace(apiKey))
 }
 
 // APIKeyFromContext returns the client API key stored in ctx or gin.Context.
