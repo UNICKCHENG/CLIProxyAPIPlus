@@ -62,6 +62,8 @@ type Handler struct {
 	pluginStoreRateLimiter  *pluginstore.GitHubRateLimiter
 	pluginReleases          pluginReleaseCache
 	serviceRuntime          cursorRuntimeProvider
+	siwcOAuthFactory        func(*config.Config) siwcOAuthService
+	siwcCommitMu            sync.Mutex
 }
 
 // cursorRuntimeProvider is the narrow surface the management import flow needs from the
@@ -129,14 +131,34 @@ func NewHandlerWithoutConfigFilePath(cfg *config.Config, manager *coreauth.Manag
 }
 
 // SetConfig updates the in-memory config reference when the server hot-reloads.
+// A config parsed from an older version of the config file is ignored: a later
+// save already changed the file, and the reload for that save publishes it.
 func (h *Handler) SetConfig(cfg *config.Config) {
 	if h == nil {
 		return
 	}
 	cloned := cfg.CloneForRuntime()
 	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.isStaleConfigFileSnapshotLocked(cloned) {
+		log.Debug("management: ignoring config reload parsed from an older config file version")
+		return
+	}
 	h.cfg = cloned
-	h.mu.Unlock()
+}
+
+// isStaleConfigFileSnapshotLocked reports whether cfg was parsed from config file
+// bytes that are no longer on disk. Management saves hold h.mu, so none can land
+// during the check. Callers must hold h.mu.
+func (h *Handler) isStaleConfigFileSnapshotLocked(cfg *config.Config) bool {
+	if cfg == nil || cfg.SourceHash == "" || h.configFilePath == "" {
+		return false
+	}
+	data, errRead := os.ReadFile(h.configFilePath)
+	if errRead != nil {
+		return false
+	}
+	return config.ComputeSourceHash(data) != cfg.SourceHash
 }
 
 // SetAuthManager updates the auth manager reference used by management endpoints.

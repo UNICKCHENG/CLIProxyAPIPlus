@@ -11,6 +11,7 @@ import (
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	log "github.com/sirupsen/logrus"
 )
 
 // cursorRefreshInterval keeps the scheduler from re-checking a static API key in a tight loop.
@@ -125,10 +126,13 @@ func synthesizeCursorAuth(ctx *SynthesisContext, fullPath string, data []byte, m
 		}
 	}
 	coreauth.ApplyCustomHeadersFromMetadata(a)
-	perAccountExcluded := extractExcludedModelsFromMetadata(metadata)
+	perAccountExcluded, errExcluded := ExtractExcludedModelsFromMetadata(metadata)
+	if errExcluded != nil {
+		log.WithError(errExcluded).Warnf("ignoring invalid excluded models in auth file %s", filepath.Base(fullPath))
+	}
 	perAccountModelAliases := extractOAuthModelAliasesFromMetadata(metadata)
 	coreauth.SetOAuthModelAliasesAttribute(a, perAccountModelAliases)
-	ApplyAuthExcludedModelsMeta(a, cfg, perAccountExcluded, "oauth")
+	ApplyAuthExcludedModelsMeta(a, perAccountExcluded, "oauth")
 	applyFingerprintProfileAttribute(a, metadata)
 	return a, nil
 }

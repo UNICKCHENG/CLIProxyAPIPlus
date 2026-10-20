@@ -579,6 +579,11 @@ func (r *UsageReporter) publishAttemptRecord(ctx context.Context, record usage.R
 }
 
 func (r *UsageReporter) publishRecord(ctx context.Context, record usage.Record) {
+	// Streaming publication can outlive the handler. Use the authentication
+	// snapshot captured at reporter creation instead of reading pooled Gin state.
+	ctx = usage.WithAPIKey(ctx, r.apiKey)
+	ctx = usage.WithAccessProvider(ctx, r.accessProvider)
+	ctx = usage.WithIsNativeKey(ctx, r.isNativeKey)
 	record.ResponseHeaders = internallogging.GetResponseHeaders(ctx)
 	usage.PublishRecord(ctx, record)
 }
