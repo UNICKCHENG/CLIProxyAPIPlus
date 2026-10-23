@@ -21,6 +21,7 @@ import (
 	"github.com/go-git/go-git/v6/plumbing/object"
 	"github.com/go-git/go-git/v6/plumbing/transport"
 	"github.com/go-git/go-git/v6/plumbing/transport/http"
+	"github.com/go-git/go-git/v6/storage/filesystem"
 	"github.com/go-git/go-git/v6/storage/filesystem/dotgit"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
@@ -1555,7 +1556,7 @@ func isRepositoryCorruptionError(err error) bool {
 	return errors.Is(err, dotgit.ErrPackfileNotFound) || errors.Is(err, plumbing.ErrObjectNotFound)
 }
 
-func verifyRepositoryHead(repo *git.Repository) error {
+func verifyRepositoryHead(repo *git.Repository) (errResult error) {
 	if repo == nil {
 		return fmt.Errorf("repository is nil")
 	}
@@ -1566,7 +1567,18 @@ func verifyRepositoryHead(repo *git.Repository) error {
 		}
 		return errHead
 	}
-	commit, errCommit := repo.CommitObject(head.Hash())
+	objectStore := repo.Storer
+	if diskStore, ok := objectStore.(*filesystem.Storage); ok {
+		// Verify disk contents without cached objects or open pack descriptors.
+		freshStore := filesystem.NewStorage(diskStore.Filesystem(), nil)
+		defer func() {
+			if errClose := freshStore.Close(); errClose != nil {
+				errResult = errors.Join(errResult, fmt.Errorf("close verification storage: %w", errClose))
+			}
+		}()
+		objectStore = freshStore
+	}
+	commit, errCommit := object.GetCommit(objectStore, head.Hash())
 	if errCommit != nil {
 		return errCommit
 	}
