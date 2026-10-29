@@ -5,7 +5,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 )
@@ -44,7 +43,7 @@ func TestHomeDispatchSelectionReleasesAttemptCancelTokensWithoutGrowingResources
 	}
 
 	selection.End("completed")
-	drainCtx, cancelDrain := context.WithTimeout(context.Background(), time.Second)
+	drainCtx, cancelDrain := context.WithCancel(context.Background())
 	defer cancelDrain()
 	if errDrain := registry.Drain(drainCtx); errDrain != nil {
 		t.Fatalf("Drain() error = %v", errDrain)
@@ -102,6 +101,52 @@ func TestHomeDispatchSelectionAttemptReleaseRacesDrainExactlyOnce(t *testing.T) 
 		t.Fatalf("active attempt cancel tokens = %d, want 0", got)
 	}
 	if errDrain := registry.Drain(context.Background()); errDrain != nil {
+		t.Fatalf("Drain() error = %v", errDrain)
+	}
+}
+
+func TestHomeDispatchSelectionEndWebsocketTurnKeepsDeliveringAttempt(t *testing.T) {
+	registry := executionregistry.New()
+	pending, errBegin := registry.BeginDispatch()
+	if errBegin != nil {
+		t.Fatal(errBegin)
+	}
+	scope, errInstall := registry.Install(pending, executionregistry.ScopeSpec{})
+	if errInstall != nil {
+		t.Fatal(errInstall)
+	}
+	selection, errSelection := newHomeDispatchSelection(&Auth{ID: "home-auth"}, nil, "home", scope)
+	if errSelection != nil {
+		t.Fatal(errSelection)
+	}
+	turnCtx, releaseTurn, errTurn := selection.AttemptContext(context.Background())
+	if errTurn != nil {
+		t.Fatal(errTurn)
+	}
+	otherCtx, releaseOther, errOther := selection.AttemptContext(context.Background())
+	if errOther != nil {
+		t.Fatal(errOther)
+	}
+	defer releaseOther()
+
+	selection.EndWebsocketTurn(turnCtx, "upstream_disconnected")
+
+	if selection.Active() {
+		t.Fatal("selection still active after EndWebsocketTurn")
+	}
+	if otherCtx.Err() == nil {
+		t.Fatal("other attempt was not cancelled")
+	}
+	if turnCtx.Err() != nil {
+		t.Fatal("the delivering attempt was cancelled")
+	}
+	releaseTurn()
+	if turnCtx.Err() == nil {
+		t.Fatal("releasing the delivering attempt did not cancel it")
+	}
+	drainCtx, cancelDrain := context.WithCancel(context.Background())
+	defer cancelDrain()
+	if errDrain := registry.Drain(drainCtx); errDrain != nil {
 		t.Fatalf("Drain() error = %v", errDrain)
 	}
 }
